@@ -1,0 +1,159 @@
+from django.db import models
+from phonenumber_field.modelfields import PhoneNumberField
+
+
+
+
+
+class Company(models.Model):     
+    company_id = models.AutoField(primary_key=True)
+    company_name = models.CharField(max_length=100)
+    phone_number = PhoneNumberField()
+    email = models.EmailField(blank=True)
+    website = models.URLField(blank=True,null=True)
+    industry = models.ManyToManyField('Industry')
+    founded_date = models.DateField(blank=True, null=True)
+    company_size = models.IntegerField(blank=True, null=True)
+    logo = models.ImageField(blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+
+class Location(models.Model):  
+    company_id = models.ForeignKey('Company', on_delete=models.CASCADE,related_name='locations')
+    address = models.CharField(max_length=255)
+    city = models.CharField(max_length=100)
+    state = models.CharField(max_length=100)
+    postal_code = models.CharField(max_length=20)
+    country = models.CharField(max_length=100)
+
+class Industry(models.Model):           
+    industry_id = models.AutoField(primary_key=True)
+    industry_name = models.CharField(max_length=100, unique=True)
+    
+    def __str__(self):
+        return self.industry_name
+
+
+class Department(models.Model):      
+    department_id = models.AutoField(primary_key=True)
+    department_name = models.CharField(max_length=100)
+    industry = models.ManyToManyField('Industry')
+     
+    def __str__(self):
+        return self.department_name
+
+class Skill(models.Model):   
+    skill_id = models.AutoField(primary_key=True)
+    skill_name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.skill_name
+
+
+class JobStatus(models.Model):
+    status_id = models.AutoField(primary_key=True)
+    status_name = models.CharField(max_length=100)
+    
+    def __str__(self):
+        return self.status_name
+
+class JobPosting(models.Model):   
+    job_id = models.AutoField(primary_key=True)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    job_title = models.CharField(max_length=100)
+    job_position = models.CharField(max_length=100)
+    industry_id = models.ForeignKey(Industry, on_delete=models.CASCADE)
+    department_id = models.ForeignKey(Department, on_delete=models.CASCADE)
+    job_type = models.CharField(max_length=100) #Full Time, Permanent
+    description = models.TextField(blank=True)
+    requirements = models.TextField(blank=True)
+    skills = models.ManyToManyField(Skill, blank=True)
+    benefits = models.TextField(blank=True)
+    salary = models.IntegerField(null=True, blank=True)
+    location_type = models.CharField(max_length=20, choices=[
+        ('Onsite', 'Onsite'),
+        ('Remote', 'Remote'),
+    ], default='Onsite') 
+    location = models.ForeignKey(Location, on_delete=models.CASCADE)    
+    application_deadline = models.DateTimeField()
+    application_instructions = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    application_count = models.IntegerField(default=0,null=True,blank=True)
+
+    def current_status(self):
+        latest_log = JobStatusLog.objects.filter(job_id=self).order_by('-date_changed').first()
+        return latest_log.status_id.status_name if latest_log else None
+
+class JobStatusLog(models.Model):
+    joblog_id = models.AutoField(primary_key=True)
+    job_id = models.ForeignKey(JobPosting, on_delete=models.CASCADE)
+    status_id = models.ForeignKey(JobStatus, on_delete=models.CASCADE)
+    date_changed = models.DateTimeField(auto_now_add=True)
+
+
+
+
+
+
+
+# views.py
+
+# import csv
+# from django.shortcuts import render
+# from django.http import HttpResponse
+# from .models import JobPosting, Company, Industry, Department, Skill, Location
+# from .forms import CSVUploadForm
+
+# def upload_csv(request):
+#     if request.method == 'POST':
+#         form = CSVUploadForm(request.POST, request.FILES)
+#         if form.is_valid():
+#             csv_file = request.FILES['csv_file']
+#             if not csv_file.name.endswith('.csv'):
+#                 return HttpResponse('File is not CSV type')
+            
+#             file_data = csv_file.read().decode("utf-8")
+#             lines = file_data.split("\n")
+
+#             # Process the CSV file
+#             for line in lines[1:]:  # Skip the header row
+#                 fields = line.split(",")
+#                 if len(fields) > 1:  # Ensure there are enough fields to process
+#                     try:
+#                         company = Company.objects.get(id=fields[1])
+#                         industry = Industry.objects.get(id=fields[4])
+#                         department = Department.objects.get(id=fields[5])
+#                         location = Location.objects.get(id=fields[11])
+                        
+#                         job_posting = JobPosting(
+#                             job_title=fields[2],
+#                             job_position=fields[3],
+#                             company=company,
+#                             industry_id=industry,
+#                             department_id=department,
+#                             job_type=fields[6],
+#                             description=fields[7],
+#                             requirements=fields[8],
+#                             benefits=fields[10],
+#                             salary=int(fields[9]) if fields[9] else None,
+#                             location_type=fields[11],
+#                             location=location,
+#                             application_deadline=fields[13],
+#                             application_instructions=fields[14],
+#                             application_count=int(fields[15]) if fields[15] else 0,
+#                         )
+#                         job_posting.save()
+
+#                         # Add skills
+#                         skill_ids = fields[12].split(';')
+#                         for skill_id in skill_ids:
+#                             skill = Skill.objects.get(id=skill_id)
+#                             job_posting.skills.add(skill)
+                        
+#                         job_posting.save()
+#                     except Exception as e:
+#                         print(f"Error processing line {line}: {e}")
+
+#             return HttpResponse("CSV file processed successfully")
+#     else:
+#         form = CSVUploadForm()
+#     return render(request, 'upload_csv.html', {'form': form})
