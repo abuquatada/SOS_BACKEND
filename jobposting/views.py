@@ -18,6 +18,7 @@ from rest_framework.decorators import authentication_classes, permission_classes
 from django.db import IntegrityError
 from rest_framework import status
 from applicant.models import Applicants
+import csv
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
@@ -478,3 +479,62 @@ class FilterCompany(generics.ListAPIView):
     serializer_class =CompanySerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = CompanyFilter
+
+
+
+
+##-----------------------------------------
+
+
+class CSVUploadView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = CSVUploadSerializer(data=request.data)
+        if serializer.is_valid():
+            csv_file = serializer.validated_data['csv_file']
+            # print('\n\n\n',f'this is csv file {csv_file}','\n\n\n')
+            file_data = csv_file.read().decode('utf-8').splitlines()
+            # print('\n\n\n',f"this is file data {file_data}",'\n\n\n')
+            reader = csv.DictReader(file_data)
+            # print('\n\n\n',f'this is reader {reader}','\n\n\n')
+            for row in reader:
+                print('\n\n\n',f'this is row {row}','\n\n\n')
+                # print('\n\n\n',f'this is row {row['Curr. Company name']}','\n\n\n')
+                # try:
+                # company = Company.objects.get_or_create(company_name=row['Curr. Company name'])
+                # print('\n\n\n',company,'\n\n\n')
+                    
+                #     industry = Industry.objects.get(id=row[''])
+                #     department = Department.objects.get(id=row[''])
+                #     location = Location.objects.get(id=row[''])
+                    
+                #     job_posting = JobPosting(
+                #         job_title=row[''],
+                #         job_position=row[''],
+                #         company=company,
+                #         industry_id=industry,
+                #         department_id=department,
+                #         job_type=row[''],
+                #         description=row[''],
+                #         requirements=row[''],
+                #         benefits=row[''],
+                #         salary=int(row['']) if row[''] else None,
+                #         location_type=row[''],
+                #         location=location,
+                #         application_deadline=row[''],
+                #         application_instructions=row[''],
+                #         application_count=int(row['']) if row[''] else 0,
+                #     )
+                #     job_posting.save()
+                # skill_names = row['Key Skills'].split(',')
+                # print('\n\n\n',skill_names,'\n\n\n')
+                # for skill_name in skill_names:
+                #     skill = Skill.objects.get_or_create(skill_name=skill_name)
+                #     # job_posting.skills.add(skill)
+                    
+                #     job_posting.save()
+                # except Exception as e:
+                #     return Response({'error': f'Error processing row {e}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        
+            return Response({'message': 'CSV file processed successfully'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

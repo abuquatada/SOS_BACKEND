@@ -148,3 +148,8 @@ class JobStatusSerializer(serializers.ModelSerializer):
 
 
 
+
+##----------------------
+
+class CSVUploadSerializer(serializers.Serializer):
+    csv_file = serializers.FileField()
