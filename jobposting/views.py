@@ -20,6 +20,7 @@ from rest_framework import status
 from applicant.models import Applicants
 from rest_framework.parsers import MultiPartParser, FormParser
 import csv
+from django.utils import timezone
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
@@ -73,6 +74,14 @@ def jobstatus(request, pk=None):
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
 def jobposting(request, pk=None):
     if request.method == 'GET':
+        
+        start_date=timezone.now() - timezone.timedelta(days=30)
+        end_date=timezone.now()
+        count=JobPosting.objects.filter(created_at__range=[start_date,end_date]).count()
+        
+        if 'count' in request.query_params:
+            return Response({'jobpost_count':count})
+    
         if pk:
             try:
                 jobposting = JobPosting.objects.get(pk=pk)
