@@ -392,6 +392,79 @@ def get_recruiter_specific(request, pk=None):
         return Response({'created_jobs': created_jobs, 'message': 'Jobs assigned successfully'})
 
 
+@csrf_exempt
+@api_view(['GET', 'POST', 'PATCH', 'DELETE'])
+def emplog(request, pk=None):
+    if request.method == 'GET':
+        if pk:
+            try:
+                emplog = EmployeeLog.objects.get(pk=pk)
+                serializer = EmployeeLogSerializer(emplog)
+                return Response(serializer.data)
+            except EmployeeLog.DoesNotExist:
+                return Response({'employeelog not found'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            emplogs = EmployeeLog.objects.all()
+            serializer = EmployeeLogSerializer(emplogs, many=True)
+            return Response(serializer.data)
+
+    elif request.method == 'POST':
+        user_id = request.data.get('user')
+        activity_type = request.data.get('activity_type')
+
+        if activity_type == 'login':
+            try:
+                recruiter = Recruiters.objects.get(pk=user_id)
+                login_log = EmployeeLog.objects.create(
+                    recruiter_id=recruiter,
+                    activity_type='login',
+                    remarks='Logged in'
+                )
+                return Response('Login Recorded Successfully', status=status.HTTP_201_CREATED)
+            except Recruiters.DoesNotExist:
+                return Response({'Recruiter not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        elif activity_type == 'logout':
+            
+            try:
+                recruiter = Recruiters.objects.get(pk=user_id)
+                logout_log = EmployeeLog.objects.create(
+                    recruiter_id=recruiter,
+                    activity_type='logout',
+                    remarks='Logged out'
+                )
+                total_work_hours = logout_log.total_work_hours()
+                return Response({
+                    'message': 'Logout Recorded Successfully',
+                    'total_work_hours': total_work_hours
+                }, status=status.HTTP_201_CREATED)
+            except Recruiters.DoesNotExist:
+                return Response({'Recruiter not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        else:
+            return Response({'Invalid activity type'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+    elif request.method == 'PATCH':
+        try:
+            emplog = EmployeeLog.objects.get(pk=pk)
+        except EmployeeLog.DoesNotExist:
+            return Response({'EmployeeLog not found'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = EmployeeLogSerializer(emplog, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response('Updated Successfully',)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        try:
+            emplog = EmployeeLog.objects.get(pk=pk)
+        except EmployeeLog.DoesNotExist:
+            return Response({ 'EmployeeLog not found'}, status=status.HTTP_404_NOT_FOUND)
+        emplog.delete()
+        return Response('Deleted Successfully',status=status.HTTP_204_NO_CONTENT)
+
+
 
 
 
