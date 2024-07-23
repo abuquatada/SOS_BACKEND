@@ -53,3 +53,22 @@ class Recruiter_Specific_Job(models.Model):
     job_id=models.ForeignKey(JobPosting,on_delete=models.CASCADE,null=True)
     recruiter_id = models.ForeignKey(Recruiters,on_delete=models.CASCADE,null=True)
 
+class EmployeeLog(models.Model):
+    emplog_id=models.AutoField(primary_key=True)
+    recruiter_id=models.ForeignKey('Recruiters', on_delete=models.CASCADE)
+    date=models.DateField(auto_now_add=True)
+    activity_time=models.DateTimeField(auto_now_add=True)
+    remarks=models.CharField(max_length=1000)
+    activity_type=models.CharField(max_length=500)
+    
+    def total_work_hours(self):
+        if self.activity_type == 'logout':
+            login_log = EmployeeLog.objects.filter(
+                recruiter_id=self.recruiter_id,
+                activity_type='login',
+                date=self.date
+            ).last()
+            if login_log:
+                return (self.activity_time - login_log.activity_time).seconds // 3600
+        return 0
+
