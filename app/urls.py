@@ -92,6 +92,7 @@ urlpatterns = [
     path('recruiter_specific/<int:pk>/', get_recruiter_specific),   
     path('recruiter_specific/', get_recruiter_specific),   
     path('applicant_with_application/', applicant_with_application),  
+    path('emp/',emplog),
      
 
 
