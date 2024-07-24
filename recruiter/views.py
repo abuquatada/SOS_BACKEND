@@ -329,15 +329,28 @@ def get_recruiter_details(request, pk):
 
 @csrf_exempt
 @api_view(['GET', 'POST','PATCH', 'DELETE'])  
-# @permission_classes([IsAuthenticated]) 
+@permission_classes([IsAuthenticated]) 
 def get_recruiter(request, pk=None):
     if request.method == 'GET':
-            try:
-                profile = Recruiters.objects.get(pk=pk)
-                serializer = Recruiter2Serializer(profile)
-                return Response(serializer.data)
-            except Recruiters.DoesNotExist:
-                return Response(status=status.HTTP_404_NOT_FOUND)
+            role = str(request.user.role_id)
+            print('\n',role,'\n\n\n')
+            if role == 'Recruiter':
+                user_id = request.user.recruiters.recruiter_id
+                # print('\n\n\n',user_id.recruiters.recruiter_id,'\n\n\n')
+                print('\n\n\n',user_id,'\n\n\n')
+                try:
+                    profile = Recruiters.objects.get(pk=user_id)
+                    serializer = Recruiter2Serializer(profile)
+                    return Response(serializer.data)
+                except Recruiters.DoesNotExist:
+                    return Response(status=status.HTTP_404_NOT_FOUND)
+            else:    
+                try:
+                    profile = Recruiters.objects.get(pk=pk)
+                    serializer = Recruiter2Serializer(profile)
+                    return Response(serializer.data)
+                except Recruiters.DoesNotExist:
+                    return Response(status=status.HTTP_404_NOT_FOUND)
             
 
 @csrf_exempt
@@ -350,16 +363,7 @@ def get_recruiter_specific(request, pk=None):
                 serializer = Recruiter_Specific_Job2Serializer(profile,many=True)
                 return Response(serializer.data)
             except Recruiter_Specific_Job.DoesNotExist:
-                return Response(status=status.HTTP_404_NOT_FOUND)  
-            
-    # elif request.method == 'POST':
-    #     data = request.data 
-    #     serializer = Recruiter_Specific_JobSerializer(data=data)
-    #     if serializer.is_valid():
-    #         serializer.save()
-            
-    #         return Response('Job assigned succesfully')
-    #     return Response(serializer.errors)                              
+                return Response(status=status.HTTP_404_NOT_FOUND)                               
     
     elif request.method == 'POST':
         data = request.data

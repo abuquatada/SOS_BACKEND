@@ -64,11 +64,21 @@ def login_view(request):
     username = request.data.get('username')
     password = request.data.get('password')
     user = authenticate(username=username, password=password)
-    print(user)
+    print('\n\n\n',user,'\n\n\n')
     if user is not None:
         refresh = RefreshToken.for_user(user)
         access_token = refresh.access_token
-        access_token['role']=str(user.role_id)
+        user_role =str(user.role_id)
+        print('\n\n\n',user_role,'\n\n\n')
+        if user_role == 'Recruiter':
+            access_token['recruiter_id']=user.recruiters.recruiter_id
+            print('\n\n\n',f'this is recruiter {user.recruiters.recruiter_id}','\n\n\n')
+        elif user_role == 'Applicant':
+            access_token['applicant_id']=user.applicants.applicant_id
+            print('\n\n\n',f'this is applicant {user.applicants.applicant_id}','\n\n\n') 
+        else :
+            print('\n\n\n',None,'\n\n\n')    
+        access_token['role']=user_role
         return Response({
             'refresh': str(refresh),
             'access': str(access_token),
@@ -76,14 +86,6 @@ def login_view(request):
     else:
         return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
-
-@csrf_exempt
-@api_view(['POST'])
-# @authentication_classes([JWTAuthentication])
-# @permission_classes([IsAuthenticated])
-def logout(request):
-    logout(request)
-    return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
@@ -128,3 +130,25 @@ def roles(request, pk=None):
         role.delete()
         return Response('Role deleted successfully',status=status.HTTP_204_NO_CONTENT)
 
+
+
+
+class Logout(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        print('\n\n\n',request,'\n\n\n')
+        
+        try:
+            refresh_token = request.data.get("refresh_token")
+            if not refresh_token:
+                return Response({"Message":"Enter refresh_token"})
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({"message":"Success"},
+                            status=status.HTTP_200_OK
+                            )
+        
+        except Exception as e:
+            return Response({"message":str(e)})

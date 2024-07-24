@@ -25,3 +25,25 @@ class RoleSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+
+
+##----------------------
+
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.settings import api_settings
+from rest_framework_simplejwt.tokens import RefreshToken
+
+class CustomTokenRefreshSerializer(TokenRefreshSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        refresh = RefreshToken(attrs['refresh'])
+        access_token = refresh.access_token
+        user_id = refresh['user_id']
+        try:
+            user = CustomUser.objects.get(id=user_id)
+            access_token['role'] = str(user.role_id)
+        except CustomUser.DoesNotExist:
+            pass
+
+        data['access'] = str(access_token)
+        return data

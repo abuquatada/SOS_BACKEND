@@ -15,7 +15,7 @@ urlpatterns = [
     path('users/',User.as_view()),
     path('register/',register),
     path('login/', login_view),
-    path('logout/', logout),
+    path('logout/',Logout.as_view()),
     path('complete_profile_applicant/',complete_profile_applicant),
     path('complete_profile_recruiter/',complete_profile_recruiter),
     path('industry/', industry),
@@ -78,7 +78,7 @@ urlpatterns = [
     path('filter-applicants/', FilterApplicant.as_view(), name='filter-applicants'),
     path('send-email-filtered-applicants/', SendEmailToSelectedApplicants),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/refresh/', TokenRefreshView.as_view(serializer_class=CustomTokenRefreshSerializer), name='token_refresh'),
     path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
     path('applicant-details/<int:pk>/', get_applicant_details),
     path('recruiter-details/<int:pk>/', get_recruiter_details),
@@ -91,6 +91,10 @@ urlpatterns = [
     path('application_by_job_id/<int:job_id>/', get_application),
     path('recruiter_specific/<int:pk>/', get_recruiter_specific),   
     path('recruiter_specific/', get_recruiter_specific),   
-    path('applicant_with_application/', applicant_with_application),   
+    path('applicant_with_application/', applicant_with_application),  
+     
 
+
+##-----------------------bulk addition-----------------
+   path('csv/',CSVUploadView.as_view())
 ]
