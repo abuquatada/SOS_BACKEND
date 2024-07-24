@@ -363,16 +363,7 @@ def get_recruiter_specific(request, pk=None):
                 serializer = Recruiter_Specific_Job2Serializer(profile,many=True)
                 return Response(serializer.data)
             except Recruiter_Specific_Job.DoesNotExist:
-                return Response(status=status.HTTP_404_NOT_FOUND)  
-            
-    # elif request.method == 'POST':
-    #     data = request.data 
-    #     serializer = Recruiter_Specific_JobSerializer(data=data)
-    #     if serializer.is_valid():
-    #         serializer.save()
-            
-    #         return Response('Job assigned succesfully')
-    #     return Response(serializer.errors)                              
+                return Response(status=status.HTTP_404_NOT_FOUND)                               
     
     elif request.method == 'POST':
         data = request.data
