@@ -83,3 +83,9 @@ class Recruiter_Specific_Job2Serializer(serializers.ModelSerializer):
         model = Recruiter_Specific_Job
         fields = '__all__' 
         depth=2 
+        
+
+class EmployeeLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=EmployeeLog
+        fields='__all__'

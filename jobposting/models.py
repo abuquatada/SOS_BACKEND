@@ -8,7 +8,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 class Company(models.Model):     
     company_id = models.AutoField(primary_key=True)
     company_name = models.CharField(max_length=100)
-    phone_number = PhoneNumberField()
+    phone_number = models.CharField(max_length=100)
     email = models.EmailField(blank=True)
     website = models.URLField(blank=True,null=True)
     industry = models.ManyToManyField('Industry')

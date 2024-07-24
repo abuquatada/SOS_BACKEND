@@ -18,7 +18,9 @@ from rest_framework.decorators import authentication_classes, permission_classes
 from django.db import IntegrityError
 from rest_framework import status
 from applicant.models import Applicants
+from rest_framework.parsers import MultiPartParser, FormParser
 import csv
+from django.utils import timezone
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
@@ -72,6 +74,14 @@ def jobstatus(request, pk=None):
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
 def jobposting(request, pk=None):
     if request.method == 'GET':
+        
+        start_date=timezone.now() - timezone.timedelta(days=30)
+        end_date=timezone.now()
+        count=JobPosting.objects.filter(created_at__range=[start_date,end_date]).count()
+        
+        if 'count' in request.query_params:
+            return Response({'jobpost_count':count})
+    
         if pk:
             try:
                 jobposting = JobPosting.objects.get(pk=pk)
@@ -228,10 +238,23 @@ def industry(request, pk=None):
             return Response(serializer.data)
 
     elif request.method == 'POST':
-        serializer = IndustrySerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response('Industry added successfully', status=status.HTTP_201_CREATED)
+        if 'file' in request.FILES:
+          csv_file = request.FILES['file']
+          decoded_file = csv_file.read().decode('utf-8').splitlines()
+          reader = csv.DictReader(decoded_file)
+     
+          for row in reader:
+             serializer = IndustrySerializer(data=row)
+             if serializer.is_valid():
+                serializer.save()
+
+          return Response('Industries added successfully from CSV', status=status.HTTP_201_CREATED)
+
+        else:
+           serializer = IndustrySerializer(data=request.data)
+           if serializer.is_valid():
+              serializer.save()
+              return Response('Industry added successfully', status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'PATCH':
@@ -274,12 +297,41 @@ def department(request, pk=None):
             return Response(serializer.data)
     
     elif request.method == 'POST':
-        serializer = DepartmentSerializer(data=request.data)        
-        if serializer.is_valid():
+        if 'file' in request.FILES:
+          csv_file = request.FILES['file']
+          decoded_file = csv_file.read().decode('utf-8').splitlines()
+    
+            # Process the CSV file
+          for line in decoded_file[1:]: 
+                fields = line.split(",")
+                if len(fields) > 1:  
+                    try:
+                        industry_ids = fields[2].split(',')
+                        
+                        
+                        department_data = {
+                        'department_name': fields[1],
+                        'industry':industry_ids
+                        }
+                    
+                        serializer = DepartmentSerializer(data=department_data)
+                        if serializer.is_valid():
+                          department = serializer.save()
+                          print(f"department saved: {department}")
+                        else:
+                         print(f"Validation errors: {serializer.errors}")
+                        
+                    except Exception as e:
+                         print(f"Error processing line {line}: {e}")
+            
+          return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+          serializer = DepartmentSerializer(data=request.data)        
+          if serializer.is_valid():
             serializer.save()
             return Response('Department added successfully', status=status.HTTP_201_CREATED)
         
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+          return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
           
     elif request.method == 'PATCH':
@@ -330,11 +382,23 @@ def skills(request, pk=None):
             return Response(serializer.data)
 
     elif request.method == 'POST':
-        serializer = SkillSerializer(data=request.data)
-        if serializer.is_valid():
+        if 'file' in request.FILES:
+            csv_file = request.FILES['file']
+            decoded_file = csv_file.read().decode('utf-8').splitlines()
+            reader = csv.DictReader(decoded_file)
+            
+            for row in reader:
+                serializer = SkillSerializer(data=row)
+                if serializer.is_valid():
+                    serializer.save()
+            return Response('Skills added successfully from CSV', status=status.HTTP_201_CREATED)
+        
+        else:
+          serializer = SkillSerializer(data=request.data)
+          if serializer.is_valid():
             serializer.save()
             return Response('Skill added successfully', status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+          return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'PATCH':
         try:
@@ -377,12 +441,48 @@ def company(request, pk=None):
     
 
     elif request.method == 'POST':
-        validate_data = request.data
-        serializer = CompanySerializer3(data=validate_data)
-        if serializer.is_valid():
+        if 'file' in request.FILES:
+          csv_file = request.FILES['file']
+          decoded_file = csv_file.read().decode('utf-8').splitlines()
+    
+            # Process the CSV file
+          for line in decoded_file[1:]: 
+                fields = line.split(",")
+                if len(fields) > 1:  
+                    try:
+                        industry_ids = fields[5].split(',')
+                        
+                        
+                        company_data = {
+                        'company_name': fields[1],
+                        'phone_number': fields[2],
+                        'email': fields[3],
+                        'website': fields[4],
+                        'founded_date': fields[6],
+                        'company_size': fields[7],
+                        'description': fields[9],
+                        'industry':industry_ids
+                        }
+                    
+                        serializer = CompanySerializer(data=company_data)
+                        if serializer.is_valid():
+                          company = serializer.save()
+                          print(f"Company saved: {company}")
+                        else:
+                         print(f"Validation errors: {serializer.errors}")
+                        
+                    except Exception as e:
+                         print(f"Error processing line {line}: {e}")
+            
+          return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        else:
+          validate_data = request.data
+          serializer = CompanySerializer3(data=validate_data)
+          if serializer.is_valid():
             serializer.save()
             return Response({"message": "Company Added Successfully", "success": True})
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+          return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'PATCH':
         try:
@@ -438,8 +538,22 @@ def location(request, company_id=None, location_id=None):
             return Response(serializer.data)
 
     elif request.method == 'POST':
-        serializer = LocationSerializer(data=request.data)
-        if serializer.is_valid():
+        if 'file' in request.FILES:
+          csv_file = request.FILES['file']
+          decoded_file = csv_file.read().decode('utf-8').splitlines()
+          reader = csv.DictReader(decoded_file)
+     
+          for row in reader:
+             serializer = LocationSerializer(data=row)
+             if serializer.is_valid():
+                serializer.save()
+          return Response(serializer.data)
+
+        #   return Response('Companies added successfully from CSV', status=status.HTTP_201_CREATED)
+
+        else:
+          serializer = LocationSerializer(data=request.data)
+          if serializer.is_valid():
             serializer.save()
             return Response('Added Successfully', status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
