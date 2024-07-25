@@ -93,6 +93,8 @@ urlpatterns = [
     path('recruiter_specific/', get_recruiter_specific),   
     path('applicant_with_application/', applicant_with_application),  
     path('emp/',emplog),
+    path('emp/<int:pk>/',emplog),
+    path('filter-emplog/', FilterEmplog.as_view(), name='filter-emplog'),
      
 
 

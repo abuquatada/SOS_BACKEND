@@ -400,6 +400,7 @@ def get_recruiter_specific(request, pk=None):
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
 def emplog(request, pk=None):
     if request.method == 'GET':
+       
         if pk:
             try:
                 emplog = EmployeeLog.objects.get(pk=pk)
@@ -408,7 +409,7 @@ def emplog(request, pk=None):
             except EmployeeLog.DoesNotExist:
                 return Response({'employeelog not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
-            emplogs = EmployeeLog.objects.all()
+            emplogs = EmployeeLog.objects.all().order_by('recruiter_id')
             serializer = EmployeeLogSerializer(emplogs, many=True)
             return Response(serializer.data)
 
@@ -468,7 +469,11 @@ def emplog(request, pk=None):
         emplog.delete()
         return Response('Deleted Successfully',status=status.HTTP_204_NO_CONTENT)
 
-
+class FilterEmplog(generics.ListAPIView):    
+    queryset = EmployeeLog.objects.all()
+    serializer_class =EmployeeLogSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = EmployeeLogFilter
 
 
 
