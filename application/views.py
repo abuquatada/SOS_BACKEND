@@ -17,6 +17,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import authentication_classes, permission_classes
 from django.db import IntegrityError
 from rest_framework import status
+from django.db.models import Count
 
 
 
@@ -30,6 +31,7 @@ from rest_framework import status
 # @permission_classes([IsAuthenticated])
 def application(request, pk=None):
     if request.method == 'GET':
+        
         if pk:
             try:
                 application = Application.objects.filter(application_id=pk)
@@ -178,3 +180,14 @@ class FilterApplication(generics.ListAPIView):
     serializer_class = ApplicationSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = ApplicationFilter
+
+@api_view(['GET'])
+def applicationstatuscount(request, pk=None):
+    status_counts = ApplicationStatusLog.objects.values('status_id__status_name').annotate(count=Count('status_id'))
+    result = {status['status_id__status_name']: status['count'] for status in status_counts}
+    return Response(result)
+    # status_counts = applications.values('status_id')
+
+    # return Response(status_counts)
+    
+    
