@@ -72,6 +72,11 @@ def login_view(request):
         print('\n\n\n',user_role,'\n\n\n')
         if user_role == 'Recruiter':
             access_token['recruiter_id']=user.recruiters.recruiter_id
+            login_log = EmployeeLog.objects.create(
+                    recruiter_id=user.recruiters.recruiter_id,
+                    activity_type='login',
+                    remarks='Logged in'
+                )
             print('\n\n\n',f'this is recruiter {user.recruiters.recruiter_id}','\n\n\n')
         elif user_role == 'Applicant':
             access_token['applicant_id']=user.applicants.applicant_id
@@ -138,8 +143,15 @@ class Logout(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        print('\n\n\n',request,'\n\n\n')
-        
+        role = str(request.user.role_id)
+        if role == 'Recruiter':
+            user_id = request.user.recruiters.recruiter_id
+            recruiter = Recruiters.objects.get(pk=user_id)
+            logout_log = EmployeeLog.objects.create(
+                    recruiter_id=recruiter,
+                    activity_type='logout',
+                    remarks='Logged out'
+                )   
         try:
             refresh_token = request.data.get("refresh_token")
             if not refresh_token:

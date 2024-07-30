@@ -418,7 +418,7 @@ def emplog(request, pk=None):
 
         if activity_type == 'login':
             try:
-                recruiter = Recruiters.objects.get(pk=user_id)
+                recruiter = Recruiters.objects.get(user_id=user_id)
                 login_log = EmployeeLog.objects.create(
                     recruiter_id=recruiter,
                     activity_type='login',
