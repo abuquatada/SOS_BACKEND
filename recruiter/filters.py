@@ -41,3 +41,14 @@ class RecruiterFilter(django_filters.FilterSet):
     class Meta:
         model = Recruiters
         fields = ['companies','gender','martial_status','home_town','current_location','languages','total_years_of_experience']
+        
+class EmployeeLogFilter(django_filters.FilterSet):
+    recruiter_id = django_filters.NumberFilter(field_name='recruiter_id')
+    date = django_filters.DateFilter(field_name='date')
+    activity_type = django_filters.CharFilter(field_name='activity_type')
+    remarks = django_filters.CharFilter(field_name='remarks')
+    activity_time = django_filters.DateTimeFilter(field_name='activity_time')
+    
+    class Meta:
+        model = EmployeeLog
+        fields = ['recruiter_id','date','activity_type','remarks','activity_time']
