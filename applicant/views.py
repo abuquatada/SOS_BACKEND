@@ -18,7 +18,9 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import authentication_classes, permission_classes
 from django.db import IntegrityError
 from rest_framework import status
-
+from django.db.models import Count
+from datetime import date
+from django.db.models import F
 
 @csrf_exempt
 @api_view(['POST'])
@@ -135,6 +137,14 @@ def complete_profile_applicant(request):
 # @permission_classes([IsAuthenticated])  
 def applicant(request, pk=None):
     if request.method == 'GET':
+                      
+    #     start_date=timezone.now() - timezone.timedelta(days=30)
+    #     end_date=timezone.now()
+    #     count=Applicants.objects.filter(created_at__range=[start_date,end_date]).count()
+        
+    #     if 'count' in request.query_params:
+    #         return Response({'Applicant_count':count})
+        
         if pk is not None:
             try:
                 profile = Applicants.objects.get(pk=pk)
@@ -623,3 +633,33 @@ def applicant_with_application(request):
     else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
 
+@api_view(['GET'])
+def applicantcount(request, pk=None):
+    if 'gender_count' in request.query_params:
+        gender_count = Applicants.objects.values('gender').annotate(count=Count('gender')).order_by('-count')
+        return Response(gender_count)
+    elif 'location_count' in request.query_params:
+        location_count=Applicants.objects.values('current_location').annotate(count=Count('current_location'))
+        return Response(location_count)
+    elif 'age_group' in request.query_params:
+        today = date.today()
+        current_year = today.year
+        age_expr = current_year - F('date_of_birth__year')
+        
+        age_groups = {
+            '0-18': (0, 18),
+            '19-25': (19, 25),
+            '26-35': (26, 35),
+            '36-50': (36, 50),
+            '50+': (51, 200),
+        }
+        
+        age_group_counts = {key: 0 for key in age_groups}
+
+        applicants = Applicants.objects.annotate(age=age_expr)
+
+        for age_group, (min_age, max_age) in age_groups.items():
+            count = applicants.filter(age__gte=min_age, age__lte=max_age).count()
+            age_group_counts[age_group] = count
+        
+        return Response(age_group_counts)

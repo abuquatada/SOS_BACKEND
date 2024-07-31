@@ -186,8 +186,4 @@ def applicationstatuscount(request, pk=None):
     status_counts = ApplicationStatusLog.objects.values('status_id__status_name').annotate(count=Count('status_id'))
     result = {status['status_id__status_name']: status['count'] for status in status_counts}
     return Response(result)
-    # status_counts = applications.values('status_id')
-
-    # return Response(status_counts)
-    
     
