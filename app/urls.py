@@ -95,7 +95,6 @@ urlpatterns = [
     path('emp/',emplog),
     path('emp/<int:pk>/',emplog),
     path('filter-emplog/', FilterEmplog.as_view(), name='filter-emplog'),
-    path('applicationstatuscount/',applicationstatuscount),
     path('applicantcount/',applicantcount),
      
 

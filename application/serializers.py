@@ -15,8 +15,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
 
     def get_status(self, obj):
-        log = ApplicationStatusLog.objects.filter(application_id=obj)
-        return ApplicationStatusLogSerializer(log, many=True).data
+        latest_log = ApplicationStatusLog.objects.filter(application_id=obj).order_by('-date_changed').first()
+        return latest_log.status_id.status_name if latest_log else None
     
     class Meta:
         model = Application
