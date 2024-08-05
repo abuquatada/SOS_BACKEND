@@ -16,6 +16,8 @@ urlpatterns = [
     path('register/',register),
     path('login/', login_view),
     path('logout/',Logout.as_view()),
+    path('passwordreset_request/',PasswordResetRequestView.as_view()),
+    path('passwordresetconfirm/<str:id>/<str:token>/', PasswordResetConfirmView.as_view()),
     path('complete_profile_applicant/',complete_profile_applicant),
     path('complete_profile_recruiter/',complete_profile_recruiter),
     path('industry/', industry),
