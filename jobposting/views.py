@@ -21,6 +21,7 @@ from applicant.models import Applicants
 from rest_framework.parsers import MultiPartParser, FormParser
 import csv
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
@@ -74,13 +75,23 @@ def jobstatus(request, pk=None):
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
 def jobposting(request, pk=None):
     if request.method == 'GET':
-        
-        start_date=timezone.now() - timezone.timedelta(days=30)
-        end_date=timezone.now()
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+
+        if start_date_str and end_date_str:
+            start_date = parse_datetime(start_date_str)
+            end_date = parse_datetime(end_date_str)
+        else:
+            start_date = timezone.now() - timezone.timedelta(days=30)
+            end_date = timezone.now()
+
+        if not start_date or not end_date:
+            return Response({'error': 'Invalid date format. Use YYYY-MM-DD format for dates.'}, status=400)
+
         count=JobPosting.objects.filter(created_at__range=[start_date,end_date]).count()
-        
         if 'count' in request.query_params:
-            return Response({'jobpost_count':count})
+            return Response({'jobpost_count': count})
+       
     
         if pk:
             try:
