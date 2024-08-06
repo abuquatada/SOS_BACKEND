@@ -17,6 +17,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.db import IntegrityError
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 
 
 
@@ -164,3 +165,49 @@ class Logout(APIView):
         
         except Exception as e:
             return Response({"message":str(e)})
+        
+class PasswordResetRequestView(APIView):
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email'].strip().lower()
+            try:
+                user = CustomUser.objects.get(email__iexact=email) 
+            except user.DoesNotExist:
+                return Response({"error": "user with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
+            
+            token = PasswordResetTokenGenerator().make_token(user)
+            base_url = request.build_absolute_uri('/')[:-1]
+            reset_url = f"{base_url}/passwordresetconfirm/{user.id}/{token}/"
+            sender_email = settings.EMAIL_HOST_USER
+            recipient_email = user.email
+            try:
+                send_mail(
+                    'Password Reset Request',
+                    f'Hi {user.username},\nUse the link below to reset your password:\n{reset_url}',
+                    sender_email,
+                    [recipient_email],
+                    
+                )
+            except Exception as e:
+                return Response({"error": f"Failed to send email: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            return Response({"message": "Password reset link sent", "reset_url": reset_url}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class PasswordResetConfirmView(APIView):
+    def post(self,request,token,id):
+        print(f"Received ID--{id}-----token---{token}")
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        if serializer.is_valid():
+            password = serializer.validated_data['newpassword']
+            try:
+                user = CustomUser.objects.get(pk=id)
+                if PasswordResetTokenGenerator().check_token(user,token):
+                    user.set_password(password)
+                    user.save()
+                    return Response({"message": "Password reset successful"}, status=status.HTTP_200_OK)
+                return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+            except User.DoesNotExist:
+                return Response({"error": "Invalid user"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
