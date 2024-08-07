@@ -18,6 +18,7 @@ from rest_framework.decorators import authentication_classes, permission_classes
 from django.db import IntegrityError
 from rest_framework import status
 from django.db.models import Count
+from collections import defaultdict
 
 
 
@@ -181,3 +182,46 @@ class FilterApplication(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend]
     filterset_class = ApplicationFilter
 
+
+@csrf_exempt
+@api_view(['GET'])
+def get_all_application_statuses(request):
+    applications_status_data = defaultdict(lambda: defaultdict(list))
+    latest_status_counts = defaultdict(int)
+
+    logs = ApplicationStatusLog.objects.order_by('application_id', 'date_changed')
+
+    for log in logs:
+        application_id = log.application_id_id
+        status_name = log.status_id.status_name
+        date_changed = log.date_changed
+        
+        applications_status_data[application_id][status_name].append(date_changed)
+    result = {
+        "status_data": {},
+        "latest_status_counts": defaultdict(int)
+    }
+ 
+    for application_id, status_data in applications_status_data.items():
+        latest_status_log = ApplicationStatusLog.objects.filter(application_id=application_id).order_by('date_changed').last()
+        if latest_status_log:
+            latest_status = latest_status_log.status_id.status_name
+            latest_status_counts[latest_status] += 1
+
+        result["status_data"][application_id] = {
+            "status_data": dict(status_data),
+            "latest_status": latest_status
+        }
+     
+        if latest_status:
+            result["latest_status_counts"][latest_status] += 1
+
+    
+    final_result = {
+        "applicationstatusdata": {
+            "applications": result["status_data"],
+            "latest_status_counts": result["latest_status_counts"]
+        }
+    }   
+
+    return Response(final_result)
