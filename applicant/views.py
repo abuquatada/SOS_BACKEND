@@ -18,6 +18,8 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import authentication_classes, permission_classes
 from django.db import IntegrityError
 from rest_framework import status
+import csv
+
 
 
 @csrf_exempt
@@ -631,3 +633,95 @@ def ApplicantCount(request, formate=None):
     print(applicant_count)
     serializers=ApplicantSerializer(applicant_count,many=True).data
     return Response(serializers)
+
+
+
+from datetime import datetime
+
+def parse_date(date_str):
+    for fmt in ('%m/%d/%Y', '%Y-%m-%d'):
+        try:
+            return datetime.strptime(date_str, fmt).date()
+        except ValueError:
+            continue
+    raise ValueError(f"Date format for '{date_str}' is not supported.")
+
+@api_view(['POST'])
+def CSV_Applicant(request):
+    if 'file' not in request.FILES:
+        return Response('File not found', status=status.HTTP_400_BAD_REQUEST)
+    
+    csv_file = request.FILES['file']
+    decoded_file = csv_file.read().decode('utf-8').splitlines()
+    reader = csv.DictReader(decoded_file)
+    
+    for line in reader:
+        try:
+        
+            role, created = Roles.objects.get_or_create(name=line['role_name'])
+            
+            user, created = CustomUser.objects.get_or_create(
+                username=line['username'],
+                defaults={
+                    'first_name': line['first_name'],
+                    'last_name': line['last_name'],
+                    'email': line['email'],
+                    'role_id': role,
+                    'password': 'default_password' 
+                }
+            )
+            if created:
+                user.set_password('default_password') 
+                user.save()
+            # print(f"User: {user}, Created: {created}")
+
+            date_of_birth = parse_date(line['date_of_birth']) if line['date_of_birth'] else None
+
+            applicant, created = Applicants.objects.get_or_create(
+                id=user,
+                defaults={
+                    'gender': line['gender'],
+                    'date_of_birth': date_of_birth,
+                    'phone_number': line['phone_number'],
+                    'martial_status': line['martial_status'],
+                    'home_town': line['home_town'],
+                    'permanent_address': line['permanent_address'],
+                    'pincode': line['pincode'],
+                    'current_location': line['current_location'],
+                    'preferred_job_type': line['preferred_job_type'],
+                    'preferred_location': line['preferred_location'],
+                    'availability_to_join': line['availability_to_join'],
+                    'total_years_of_experience': line['total_years_of_experience'],
+                    'languages': line['languages'],
+                    'about': line['about'],
+                }
+            )
+            # print(f"Applicant: {applicant}, Created: {created}")
+
+            skills = line['skills'].split(',')
+            for skill_name in skills:
+                skill, created = Skill.objects.get_or_create(skill_name=skill_name.strip())
+                applicant.skills.add(skill)
+            # print(f"Skills added: {skills}")
+
+            industries = line['interested_industry'].split(',')
+            for industry_name in industries:
+                industry, created = Industry.objects.get_or_create(industry_name=industry_name.strip())
+                applicant.interested_industry.add(industry)
+            # print(f"Industries added: {industries}")
+
+            departments = line['interested_department'].split(',')
+            for department_name in departments:
+                department, created = Department.objects.get_or_create(department_name=department_name.strip())
+                applicant.interested_department.add(department)
+            # print(f"Departments added: {departments}")
+
+
+            applicant.save()
+            # print(f"Applicant saved: {applicant}")
+
+        except Exception as e:
+            print(f"Error processing line: {line}")
+            return Response({'error': str(e), 'line': line}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response('Successfully imported applicants', status=status.HTTP_201_CREATED)
