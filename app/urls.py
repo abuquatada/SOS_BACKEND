@@ -96,6 +96,7 @@ urlpatterns = [
     path('count/', JobPostingCountView.as_view(), name='job-posting-count'),
     path('industryc/', JobPostingCountByIndustryView.as_view(), name='job-posting-industry-count'),
     path('appl/',ApplicationStatus1.as_view()),
-    path('csv/',CSV_Applicant)
+    path('csv/',CSV_Applicant),
+    path('rscv/',csv_recruiter)
 
 ]
