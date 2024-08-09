@@ -18,6 +18,7 @@ from django.db import IntegrityError
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.contrib.auth.hashers import check_password
 
 
 
@@ -210,4 +211,24 @@ class PasswordResetConfirmView(APIView):
                 return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
             except User.DoesNotExist:
                 return Response({"error": "Invalid user"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ChangePassword(APIView):
+    def post(self, request):
+        permission_classes = [IsAuthenticated]
+        serializer = ChangePasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            user = request.user
+            print(user)
+            old_password = serializer.validated_data['old_password']
+            new_password = serializer.validated_data['new_password']
+            
+            if not check_password(old_password, user.password):
+                return Response({"message":"Old password is incorrect."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            user.set_password(new_password)
+            user.save()
+            
+            return Response({"detail": "Password has been changed successfully."}, status=status.HTTP_200_OK)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
