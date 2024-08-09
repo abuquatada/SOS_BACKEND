@@ -17,6 +17,8 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import authentication_classes, permission_classes
 from django.db import IntegrityError
 from rest_framework import status
+from django.db.models import Max
+from collections import Counter
 from django.db.models import Count
 
 
@@ -181,3 +183,34 @@ class FilterApplication(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend]
     filterset_class = ApplicationFilter
 
+
+@api_view(['GET'])
+def application_status_count(request):
+    latest_status_logs = ApplicationStatusLog.objects.values('application_id').annotate(
+        latest_date=Max('date_changed')
+    )
+    latest_status_log_mapping = {
+        log['application_id']: log['latest_date']
+        for log in latest_status_logs
+    }
+    latest_status_list = []
+    for application_id, latest_date in latest_status_log_mapping.items():
+        latest_status_log = ApplicationStatusLog.objects.filter(
+            application_id=application_id,
+            date_changed=latest_date
+        ).first()
+        if latest_status_log:
+            latest_status_list.append(latest_status_log.status_id)
+
+    status_count = Counter(latest_status_list)
+    print('\n\n\n',status_count,'\n\n\n')
+
+    status_count_context = [
+        {'status_name': ApplicationStatus.objects.get(status_name=status_id).status_name, 'status_count': count}
+        for status_id, count in status_count.items()
+    ]
+
+    context = {
+        'status_counts': status_count_context,
+    }
+    return Response(context)

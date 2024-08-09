@@ -339,6 +339,7 @@ def department(request, pk=None):
         else:
           serializer = DepartmentSerializer(data=request.data)        
           if serializer.is_valid():
+              
             serializer.save()
             return Response('Department added successfully', status=status.HTTP_201_CREATED)
         

@@ -16,7 +16,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import authentication_classes, permission_classes
 from django.db import IntegrityError
-from rest_framework import status
+from rest_framework import status 
+import csv
 
 
 @csrf_exempt
@@ -207,85 +208,149 @@ def recruiter_certification(request, pk=None):
 @api_view(['POST'])
 # @permission_classes([IsAuthenticated])
 def complete_profile_recruiter(request):
-    validate_data = request.data
-    print('\n\n\n\n',validate_data,'\n\n\n\n')
-    role_object=Roles.objects.get(role_id=validate_data['role_id'])
-    user_data = {
-            'username': validate_data.get('username'),
-            'first_name': validate_data.get('first_name'),
-            'last_name': validate_data.get('last_name'),
-            'email': validate_data.get('email'),
-            'role_id': role_object
-        }
-    serializer=RecruiterSerializer(data=validate_data)
-    if serializer.is_valid():
-        user = CustomUser.objects.create(**user_data)
-        user.set_password(validate_data.get('password'))
-        user.save()
-        recruiter=Recruiters.objects.create(
-               user_id = user,
-               gender = validate_data['gender'],
-               date_of_birth = validate_data['date_of_birth'],
-               phone_number = validate_data['phone_number'],
-               martial_status= validate_data['martial_status'],
-               home_town= validate_data['home_town'],
-               permanent_address= validate_data['permanent_address'],
-               pincode= validate_data['pincode'],
-               current_location= validate_data['current_location'],
-               resume= validate_data['resume'],
-               total_years_of_experience=validate_data['total_years_of_experience'],
-               languages=validate_data['languages']
-          )
-        companies = [int(companies) for companies in request.data.getlist('companies')]
-        recruiter.companies.add(*companies)
-    
-        serializer=RecruiterSerializer(recruiter,data=validate_data)
-        if serializer.is_valid():
-               serializer.save()
-               
-        education_data = {
-            'recruiter_id': recruiter,
-            'degree': validate_data.get('degree'),
-            'field_of_specialization': validate_data.get('field_of_specialization'),
-            'institute_name': validate_data.get('institute_name'),
-            'date_of_completion': validate_data.get('date_of_completion'),
-        }
+    if 'file' in request.FILES:
+          csv_file = request.FILES['file']
+          decoded_file = csv_file.read().decode('utf-8').splitlines()
+          reader = csv.DictReader(decoded_file)
+          for data_line in reader:
+            #  print('\n\n\n',f'This is reader {data_line}')
+             role_object=Roles.objects.get(name=data_line['role_name'])
+             user_data = {
+                'username': data_line['username'],
+                'first_name': data_line['first_name'],
+                'last_name': data_line['last_name'],
+                'email': data_line['email'],
+                'role_id': role_object
+            }
+             user = CustomUser.objects.create(**user_data)
+             user.set_password(data_line['password'])
+             user.save()
+             recruiter=Recruiters.objects.create(
+                   user_id = user,
+                   gender = data_line['gender'],
+                   date_of_birth = data_line['date_of_birth'],
+                   phone_number = data_line['phone_number'],
+                   martial_status= data_line['martial_status'],
+                   home_town= data_line['home_town'],
+                   permanent_address= data_line['permanent_address'],
+                   pincode= data_line['pincode'],
+                   current_location= data_line['current_location'],
+                #    resume= data_line['resume'],
+                   total_years_of_experience=data_line['total_years_of_experience'],
+                   languages=data_line['languages'],
+                   about=data_line['about']
+              ) 
+            
+             education_data = {
+                'recruiter_id': recruiter,
+                'degree': data_line['degree'],
+                'field_of_specialization': data_line['field_of_specialization'],
+                'institute_name': data_line['institute_name'],
+                'date_of_completion': data_line['date_of_completion'],
+            }
+            
+            
+             experience_data = {
+                "recruiter_id": recruiter,
+                "company_name": data_line["company_name"],
+                "designation": data_line["designation"],
+                "description": data_line["description"],
+                "salary": data_line["salary"],
+                "start_date": data_line["start_date"],
+                "end_date": data_line["end_date"],
+            }
         
-        
-        experience_data = {
-            "recruiter_id": recruiter,
-            "company_name": validate_data.get("company_name"),
-            "designation": validate_data.get("designation"),
-            "description": validate_data.get("description"),
-            "salary": validate_data.get("salary"),
-            "start_date": validate_data.get("start_date"),
-            "end_date": validate_data.get("end_date"),
-        }
-    
-        certificate_data = {
-            "recruiter_id": recruiter,
-            "certification_name": validate_data.get("certification_name"),
-            "issuing_organization": validate_data.get("issuing_organization"),
-            "issue_date": validate_data.get("issue_date"),
-            "certifcate": validate_data.get("certifcate"),
-        }
-        experience_obj = RecruiterExperience.objects.create(**experience_data)
-        experience_serializer = RecruiterExperienceSerializer(experience_obj)
-        education_obj = RecruiterEducation.objects.create(**education_data)
-        education_serializer = RecruiterEducationSerializer(education_obj)
-        certificate_obj = RecruiterCertification.objects.create(**certificate_data)
-        certificate_serializer = RecruiterCertificationSerializer(certificate_obj)       
-        # subject = 'Welcome to YourRecruitmentPortal!'
-        # message = f'Thank you {user.first_name} {user.last_name} for registering with YourRecruitmentPortal. We are glad to have you on board!'
-        # sender_email = settings.EMAIL_HOST_USER
-        # recipient_list = [user.email]
-        # send_mail(subject, message, sender_email, recipient_list)
-        return Response(
-                    {"message":"user recruiter Registered Successfully", "success": True}
-               )
-       
+             certificate_data = {
+                "recruiter_id": recruiter,
+                "certification_name": data_line["certification_name"],
+                "issuing_organization": data_line["issuing_organization"],
+                "issue_date": data_line["issue_date"],
+                # "certifcate": data_line["certifcate"],
+            }
+             experience_obj = RecruiterExperience.objects.create(**experience_data)
+             education_obj = RecruiterEducation.objects.create(**education_data)
+             certificate_obj = RecruiterCertification.objects.create(**certificate_data)
+             
+          return Response('Done')
     else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        validate_data = request.data
+        print('\n\n\n\n',validate_data,'\n\n\n\n')
+        role_object=Roles.objects.get(role_id=validate_data['role_id'])
+        user_data = {
+                'username': validate_data.get('username'),
+                'first_name': validate_data.get('first_name'),
+                'last_name': validate_data.get('last_name'),
+                'email': validate_data.get('email'),
+                'role_id': role_object
+            }
+        serializer=RecruiterSerializer(data=validate_data)
+        if serializer.is_valid():
+            user = CustomUser.objects.create(**user_data)
+            user.set_password(validate_data.get('password'))
+            user.save()
+            recruiter=Recruiters.objects.create(
+                   user_id = user,
+                   gender = validate_data['gender'],
+                   date_of_birth = validate_data['date_of_birth'],
+                   phone_number = validate_data['phone_number'],
+                   martial_status= validate_data['martial_status'],
+                   home_town= validate_data['home_town'],
+                   permanent_address= validate_data['permanent_address'],
+                   pincode= validate_data['pincode'],
+                   current_location= validate_data['current_location'],
+                   resume= validate_data['resume'],
+                   total_years_of_experience=validate_data['total_years_of_experience'],
+                   languages=validate_data['languages'],
+                   about=validate_data['about']
+              )
+            companies = [int(companies) for companies in request.data.getlist('companies')]
+            recruiter.companies.add(*companies)
+        
+            serializer=RecruiterSerializer(recruiter,data=validate_data)
+            if serializer.is_valid():
+                   serializer.save()
+                   
+            education_data = {
+                'recruiter_id': recruiter,
+                'degree': validate_data.get('degree'),
+                'field_of_specialization': validate_data.get('field_of_specialization'),
+                'institute_name': validate_data.get('institute_name'),
+                'date_of_completion': validate_data.get('date_of_completion'),
+            }
+            
+            
+            experience_data = {
+                "recruiter_id": recruiter,
+                "company_name": validate_data.get("company_name"),
+                "designation": validate_data.get("designation"),
+                "description": validate_data.get("description"),
+                "salary": validate_data.get("salary"),
+                "start_date": validate_data.get("start_date"),
+                "end_date": validate_data.get("end_date"),
+            }
+        
+            certificate_data = {
+                "recruiter_id": recruiter,
+                "certification_name": validate_data.get("certification_name"),
+                "issuing_organization": validate_data.get("issuing_organization"),
+                "issue_date": validate_data.get("issue_date"),
+                "certifcate": validate_data.get("certifcate"),
+            }
+            experience_obj = RecruiterExperience.objects.create(**experience_data)
+            education_obj = RecruiterEducation.objects.create(**education_data)
+            certificate_obj = RecruiterCertification.objects.create(**certificate_data)
+            experience_serializer = RecruiterExperienceSerializer(experience_obj)
+            education_serializer = RecruiterEducationSerializer(education_obj)
+            certificate_serializer = RecruiterCertificationSerializer(certificate_obj)       
+            # subject = 'Welcome to YourRecruitmentPortal!'
+            # message = f'Thank you {user.first_name} {user.last_name} for registering with YourRecruitmentPortal. We are glad to have you on board!'
+            # sender_email = settings.EMAIL_HOST_USER
+            # recipient_list = [user.email]
+            # send_mail(subject, message, sender_email, recipient_list)
+            return Response({"message":"user recruiter Registered Successfully", "success": True})
+           
+        else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 # @permission_classes([IsAuthenticated])
 class FilterRecruiterEducation(generics.ListAPIView):
