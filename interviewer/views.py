@@ -51,7 +51,7 @@ def InterviwerViews(request, pk=None):
         except:
             return Response(status=status.HTTP_404_NOT_FOUND)
         interviewer_data.delete()
-        return Response('Delete Successfully',status=status.HTTP_200_OK)
+        return Response('Delete Successfull',status=status.HTTP_200_OK)
 
 
     
