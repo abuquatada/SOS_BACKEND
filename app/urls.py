@@ -4,6 +4,7 @@ from applicant.views import *
 from recruiter.views import *
 from application.views import *
 from jobposting.views import *
+from interviewer.views import *
 from rest_framework_simplejwt.views import (
     TokenRefreshView,TokenObtainPairView
 )
@@ -97,6 +98,8 @@ urlpatterns = [
     path('industryc/', JobPostingCountByIndustryView.as_view(), name='job-posting-industry-count'),
     path('appl/',ApplicationStatus1.as_view()),
     path('csv/',CSV_Applicant),
-    path('rscv/',csv_recruiter)
+    path('rscv/',csv_recruiter),
+    path('interviwer/',InterviwerViews),
+    path('interviwer/<int:pk>/',InterviwerViews)
 
 ]
