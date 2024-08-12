@@ -100,6 +100,11 @@ urlpatterns = [
     path('csv/',CSV_Applicant),
     path('rscv/',csv_recruiter),
     path('interviwer/',InterviwerViews),
-    path('interviwer/<int:pk>/',InterviwerViews)
+    path('interviwer/<int:pk>/',InterviwerViews),
+    path('interview/',InterviewView),
+    path('interview/<int:pk>/',InterviewView),
+    path('filter-interviwer/',FilterInterviwer.as_view()),
+    path('filter_interview/',FilterInterview.as_view())
+
 
 ]
