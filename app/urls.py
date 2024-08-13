@@ -4,6 +4,7 @@ from applicant.views import *
 from recruiter.views import *
 from application.views import *
 from jobposting.views import *
+from interviewer.views import *
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -100,7 +101,13 @@ urlpatterns = [
     path('filter-emplog/', FilterEmplog.as_view(), name='filter-emplog'),
     path('applicantcount/',applicantcount),
     path('applicationstatuslatestcount/',get_all_application_statuses),
-     
+    path('interviwer/',InterviwerViews),
+    path('interviwer/<int:pk>/',InterviwerViews),
+    path('interview/',InterviewView),
+    path('interview/<int:pk>/',InterviewView),
+    path('filter-interviwer/',FilterInterviwer.as_view()),
+    path('filter_interview/',FilterInterview.as_view()),
+
 
 
 ##-----------------------bulk addition-----------------
