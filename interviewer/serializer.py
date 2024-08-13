@@ -17,3 +17,16 @@ class interviewSerializer(serializers.ModelSerializer):
         model=Interview
         fields='__all__'
         depth=1
+        
+
+class InterviewPhaseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=InterviewPhase
+        fields='__all__'
+        
+
+class InterviewQuestionSerializer(serializers.ModelSerializer):
+    phase = InterviewPhaseSerializer()
+    class Meta:
+        model=InterviewQuestion
+        fields='__all__'
