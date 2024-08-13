@@ -17,6 +17,9 @@ urlpatterns = [
     path('register/',register),
     path('login/', login_view),
     path('logout/',Logout.as_view()),
+    path('passwordreset_request/',PasswordResetRequestView.as_view()),
+    path('passwordresetconfirm/<str:id>/<str:token>/', PasswordResetConfirmView.as_view()),
+    path('change_password/', ChangePassword.as_view()),
     path('complete_profile_applicant/',complete_profile_applicant),
     path('complete_profile_recruiter/',complete_profile_recruiter),
     path('industry/', industry),
@@ -96,14 +99,15 @@ urlpatterns = [
     path('emp/',emplog),
     path('emp/<int:pk>/',emplog),
     path('filter-emplog/', FilterEmplog.as_view(), name='filter-emplog'),
-    path('applicationstatuscount/',applicationstatuscount),
     path('applicantcount/',applicantcount),
+    path('applicationstatuslatestcount/',get_all_application_statuses),
     path('interviwer/',InterviwerViews),
     path('interviwer/<int:pk>/',InterviwerViews),
     path('interview/',InterviewView),
     path('interview/<int:pk>/',InterviewView),
     path('filter-interviwer/',FilterInterviwer.as_view()),
     path('filter_interview/',FilterInterview.as_view()),
+
 
 
 ##-----------------------bulk addition-----------------

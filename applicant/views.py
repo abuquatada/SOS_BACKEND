@@ -21,6 +21,7 @@ from rest_framework import status
 from django.db.models import Count
 from datetime import date
 from django.db.models import F
+from django.utils.dateparse import parse_datetime
 
 @csrf_exempt
 @api_view(['POST'])
@@ -137,13 +138,19 @@ def complete_profile_applicant(request):
 # @permission_classes([IsAuthenticated])  
 def applicant(request, pk=None):
     if request.method == 'GET':
-                      
-    #     start_date=timezone.now() - timezone.timedelta(days=30)
-    #     end_date=timezone.now()
-    #     count=Applicants.objects.filter(created_at__range=[start_date,end_date]).count()
-        
-    #     if 'count' in request.query_params:
-    #         return Response({'Applicant_count':count})
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+
+        start_date = parse_datetime(start_date_str)
+        end_date = parse_datetime(end_date_str)
+
+        if not start_date or not end_date:
+            return Response({'error': 'Invalid date format. Use YYYY-MM-DD format for dates.'}, status=400)
+
+        count=Applicants.objects.filter(created_at__range=[start_date,end_date]).count()
+        if 'count' in request.query_params:
+            return Response({'Applicants created in the given time period ': count})
+       
         
         if pk is not None:
             try:

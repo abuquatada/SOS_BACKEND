@@ -24,7 +24,15 @@ class RoleSerializer(serializers.ModelSerializer):
         model = Roles
         fields = '__all__'
 
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
 
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    newpassword = serializers.CharField()
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField()
+    new_password = serializers.CharField()
 
 
 ##----------------------
