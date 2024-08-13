@@ -35,12 +35,14 @@ class CompanySerializer(serializers.ModelSerializer):
         depth = 1
 
 class DepartmentSerializer(serializers.ModelSerializer):
-    industry = serializers.PrimaryKeyRelatedField(queryset=Industry.objects.all(), many=True)
-
+    industry_data = serializers.SerializerMethodField()
+    industry =serializers.ListField(write_only=True)
     class Meta:
         model = Department
-        fields = '__all__'
-        # depth = 1
+        fields = ['department_id','department_name','industry_data','industry']
+    def get_industry_data(self, obj):
+        industry_obj = Industry.objects.filter(department=obj)
+        return IndustrySerializer(industry_obj, many=True).data   
 
 class LocationSerializer(serializers.ModelSerializer):
     company_id = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all())

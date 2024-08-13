@@ -5,7 +5,7 @@ from jobposting.models import *
 
  
 
-class Recruiters(models.Model):    
+class   Recruiters(models.Model):    
     recruiter_id = models.AutoField(primary_key=True)
     user_id = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     companies = models.ManyToManyField(Company)

@@ -17,7 +17,10 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import authentication_classes, permission_classes
 from django.db import IntegrityError
 from rest_framework import status
+from django.db.models import Max
+from collections import Counter
 from django.db.models import Count
+from collections import defaultdict
 
 
 
@@ -181,9 +184,78 @@ class FilterApplication(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend]
     filterset_class = ApplicationFilter
 
+
+
 @api_view(['GET'])
-def applicationstatuscount(request, pk=None):
-    status_counts = ApplicationStatusLog.objects.values('status_id__status_name').annotate(count=Count('status_id'))
-    result = {status['status_id__status_name']: status['count'] for status in status_counts}
-    return Response(result)
+def application_status_count(request):
+    latest_status_logs = ApplicationStatusLog.objects.values('application_id').annotate(
+        latest_date=Max('date_changed')
+    )
+    latest_status_log_mapping = {
+        log['application_id']: log['latest_date']
+        for log in latest_status_logs
+    }
+    latest_status_list = []
+    for application_id, latest_date in latest_status_log_mapping.items():
+        latest_status_log = ApplicationStatusLog.objects.filter(
+            application_id=application_id,
+            date_changed=latest_date
+        ).first()
+        if latest_status_log:
+            latest_status_list.append(latest_status_log.status_id)
+
+    status_count = Counter(latest_status_list)
+    print('\n\n\n',status_count,'\n\n\n')
+
+    status_count_context = [
+        {'status_name': ApplicationStatus.objects.get(status_name=status_id).status_name, 'status_count': count}
+        for status_id, count in status_count.items()
+    ]
+
+    context = {
+        'status_counts': status_count_context,
+    }
+    return Response(context)
+
+@csrf_exempt
+@api_view(['GET'])
+def get_all_application_statuses(request):
+    applications_status_data = defaultdict(lambda: defaultdict(list))
+    latest_status_counts = defaultdict(int)
+
+    logs = ApplicationStatusLog.objects.order_by('application_id', 'date_changed')
+
+    for log in logs:
+        application_id = log.application_id_id
+        status_name = log.status_id.status_name
+        date_changed = log.date_changed
+        
+        applications_status_data[application_id][status_name].append(date_changed)
+    result = {
+        "status_data": {},
+        "latest_status_counts": defaultdict(int)
+    }
+ 
+    for application_id, status_data in applications_status_data.items():
+        latest_status_log = ApplicationStatusLog.objects.filter(application_id=application_id).order_by('date_changed').last()
+        if latest_status_log:
+            latest_status = latest_status_log.status_id.status_name
+            latest_status_counts[latest_status] += 1
+
+        result["status_data"][application_id] = {
+            "status_data": dict(status_data),
+            "latest_status": latest_status
+        }
+     
+        if latest_status:
+            result["latest_status_counts"][latest_status] += 1
+
     
+    final_result = {
+        "applicationstatusdata": {
+            "applications": result["status_data"],
+            "latest_status_counts": result["latest_status_counts"]
+        }
+    }   
+
+    return Response(final_result)

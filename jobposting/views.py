@@ -21,6 +21,7 @@ from applicant.models import Applicants
 from rest_framework.parsers import MultiPartParser, FormParser
 import csv
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
@@ -74,13 +75,23 @@ def jobstatus(request, pk=None):
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
 def jobposting(request, pk=None):
     if request.method == 'GET':
-        
-        start_date=timezone.now() - timezone.timedelta(days=30)
-        end_date=timezone.now()
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+
+        if start_date_str and end_date_str:
+            start_date = parse_datetime(start_date_str)
+            end_date = parse_datetime(end_date_str)
+        else:
+            start_date = timezone.now() - timezone.timedelta(days=30)
+            end_date = timezone.now()
+
+        if not start_date or not end_date:
+            return Response({'error': 'Invalid date format. Use YYYY-MM-DD format for dates.'}, status=400)
+
         count=JobPosting.objects.filter(created_at__range=[start_date,end_date]).count()
-        
         if 'count' in request.query_params:
-            return Response({'jobpost_count':count})
+            return Response({'jobpost_count': count})
+       
     
         if pk:
             try:
@@ -328,6 +339,7 @@ def department(request, pk=None):
         else:
           serializer = DepartmentSerializer(data=request.data)        
           if serializer.is_valid():
+              
             serializer.save()
             return Response('Department added successfully', status=status.HTTP_201_CREATED)
         
@@ -444,38 +456,27 @@ def company(request, pk=None):
         if 'file' in request.FILES:
           csv_file = request.FILES['file']
           decoded_file = csv_file.read().decode('utf-8').splitlines()
-    
-            # Process the CSV file
-          for line in decoded_file[1:]: 
-                fields = line.split(",")
-                if len(fields) > 1:  
-                    try:
-                        industry_ids = fields[5].split(',')
-                        
-                        
-                        company_data = {
-                        'company_name': fields[1],
-                        'phone_number': fields[2],
-                        'email': fields[3],
-                        'website': fields[4],
-                        'founded_date': fields[6],
-                        'company_size': fields[7],
-                        'description': fields[9],
-                        'industry':industry_ids
+          reader = csv.DictReader(decoded_file)
+          for data_line in reader:
+            #  print('\n\n\n',f'This is reader {data_line}')
+             company_data = {
+                        'company_name': data_line['company_name'],
+                        'phone_number': data_line['phone_number'],
+                        'email': data_line['email'],
+                        'website': data_line['website'],
+                        'founded_date': data_line['founded_date'],
+                        'company_size': data_line['company_size'],
+                        'description': data_line['description'],
                         }
-                    
-                        serializer = CompanySerializer(data=company_data)
-                        if serializer.is_valid():
-                          company = serializer.save()
-                          print(f"Company saved: {company}")
-                        else:
-                         print(f"Validation errors: {serializer.errors}")
-                        
-                    except Exception as e:
-                         print(f"Error processing line {line}: {e}")
-            
-          return Response(serializer.data, status=status.HTTP_201_CREATED)
-
+             company_obj = Company.objects.create(**company_data)
+             industry_name = data_line['industry'].split(',')
+             print('\n\n\n',industry_name,'\n\n\n')
+             for ind_name in industry_name:
+                 ind,created = Industry.objects.get_or_create(industry_name=ind_name)
+                 print('\n\n',f'@@@ {ind}','\n\n')
+                 company_obj.industry.add(ind)
+        #   return Response(serializer.data, status=status.HTTP_201_CREATED)
+          return Response('Done')
         else:
           validate_data = request.data
           serializer = CompanySerializer3(data=validate_data)

@@ -21,115 +21,215 @@ from rest_framework import status
 from django.db.models import Count
 from datetime import date
 from django.db.models import F
+from django.utils.dateparse import parse_datetime
+import csv
 
 @csrf_exempt
 @api_view(['POST'])
 # @permission_classes([IsAuthenticated])
 def complete_profile_applicant(request):
-    validate_data = request.data
-    print('\n\n\n',validate_data,'\n\n\n')
-    role_object=Roles.objects.get(role_id=validate_data['role_id'])
-    user_data = {
-            'username': validate_data.get('username'),
-            'first_name': validate_data.get('first_name'),
-            'last_name': validate_data.get('last_name'),
-            'email': validate_data.get('email'),
-            'role_id': role_object
-        }
-    serializer=ApplicantSerializer(data=validate_data)
-    if serializer.is_valid():
-        user = CustomUser.objects.create(**user_data)
-        user.set_password(validate_data.get('password'))
-        user.save()
-        applicant=Applicants.objects.create(
-                  id = user,
-                  gender = validate_data['gender'],
-                  date_of_birth = validate_data['date_of_birth'],
-                  phone_number = validate_data['phone_number'],
-                  martial_status= validate_data['martial_status'],
-                  home_town= validate_data['home_town'],
-                  permanent_address= validate_data['permanent_address'],
-                  pincode= validate_data['pincode'],
-                  current_location= validate_data['current_location'],
-                  resume= validate_data['resume'],
-                  preferred_job_type=validate_data['preferred_job_type'],
-                  preferred_location=validate_data['preferred_location'],
-                  availability_to_join=validate_data['availability_to_join'],
-                  work_permit_for_USA=validate_data['work_permit_for_USA'],
-                  total_years_of_experience=validate_data['total_years_of_experience'],
-                  languages=validate_data['languages'],
-                  about=validate_data['about']
-                )
-        
-        skills = [int(skills) for skills in request.data.getlist('skills')]
-        applicant.skills.add(*skills)
-        interested_industry = [int(interested_industry) for interested_industry in request.data.getlist('interested_industry')]
-        applicant.interested_industry.add(*interested_industry)
-        interested_department = [int(interested_department) for interested_department in request.data.getlist('interested_department')]
-        applicant.interested_department.add(*interested_department)
-    
-        applicant_serializer = ApplicantSerializer(applicant,data = validate_data)
-        if applicant_serializer.is_valid():
-               applicant_serializer.save()
-               
-        education_data = {
-            'applicant_id': applicant,
-            'degree': validate_data.get('degree'),
-            'field_of_specialization': validate_data.get('field_of_specialization'),
-            'institute_name': validate_data.get('institute_name'),
-            'date_of_completion': validate_data.get('date_of_completion'),
-        }
-        
-        industry_obj = Industry.objects.get(industry_id=validate_data.get('industry'))
-        department_obj = Department.objects.get(department_id=validate_data.get('department'))
-        experience_data = {
-            "applicant_id": applicant,
-            "company_name": validate_data.get("company_name"),
-            "designation": validate_data.get("designation"),
-            "description": validate_data.get("description"),
-            "department": department_obj,
-            "industry": industry_obj,
-            "salary": validate_data.get("salary"),
-            "start_date": validate_data.get("start_date"),
-            "end_date": validate_data.get("end_date"),
-        }
-        internship_data = {
-            "applicant_id": applicant,
-            "company_name": validate_data.get("internship_company_name"),
-            "position_title": validate_data.get("internship_position_title"),
-            "project_name": validate_data.get("internship_project_name"),
-            "description": validate_data.get("internship_description"),
-            "start_date": validate_data.get("internship_start_date"),
-            "end_date": validate_data.get("internship_end_date"),
-            "internship_certificate": validate_data.get("internship_certificate"),
-        }
-        certificate_data = {
-            "applicant_id": applicant,
-            "certification_name": validate_data.get("certification_name"),
-            "issuing_organization": validate_data.get("issuing_organization"),
-            "issue_date": validate_data.get("issue_date"),
-            "certifcate": validate_data.get("certifcate"),
-        }
-        experience_obj = ApplicantExperience.objects.create(**experience_data)
-        experience_serializer = ApplicantExperienceSerializer(experience_obj)
-        education_obj = ApplicantEducation.objects.create(**education_data)
-        education_serializer = ApplicantEducationSerializer(education_obj)
-        internship_obj = ApplicantInternship.objects.create(**internship_data)
-        internship_serializer = ApplicantInternshipSerializer(internship_obj)
-        certificate_obj = ApplicantCertification.objects.create(**certificate_data)
-        certificate_serializer = ApplicantCertificationSerializer(certificate_obj)
-
+    if 'file' in request.FILES:
+          csv_file = request.FILES['file']
+          decoded_file = csv_file.read().decode('utf-8').splitlines()
+          reader = csv.DictReader(decoded_file)
+          for data_line in reader:
+             print('\n\n\n',f'This is reader {data_line}')
+             role_object=Roles.objects.get(name=data_line['role_name'])
+             user_data = {
+                'username': data_line['username'],
+                'first_name': data_line['first_name'],
+                'last_name': data_line['last_name'],
+                'email': data_line['email'],
+                'role_id': role_object
+            }
+             user = CustomUser.objects.create(**user_data)
+             user.set_password(data_line['password'])
+             user.save()
+             applicant=Applicants.objects.create(
+                      id = user,
+                      gender = data_line['gender'],
+                      date_of_birth = data_line['date_of_birth'],
+                      phone_number = data_line['phone_number'],
+                      martial_status= data_line['martial_status'],
+                      home_town= data_line['home_town'],
+                      permanent_address= data_line['permanent_address'],
+                      pincode= data_line['pincode'],
+                      current_location= data_line['current_location'],
+                    #   resume= data_line['resume'],
+                      preferred_job_type=data_line['preferred_job_type'],
+                      preferred_location=data_line['preferred_location'],
+                      availability_to_join=data_line['availability_to_join'],
+                      work_permit_for_USA=data_line['work_permit_for_USA'],
+                      total_years_of_experience=data_line['total_years_of_experience'],
+                      languages=data_line['languages'],
+                      about=data_line['about']
+                    ) 
+             skill_name = data_line['skills'].split(',')
+             for skill in skill_name:
+                 ind,created = Skill.objects.get_or_create(skill_name=skill)
+                 applicant.skills.add(ind)
+                 
+             industry_name = data_line['interested_industry'].split(',')
+             for ind_name in industry_name:
+                 ind,created = Industry.objects.get_or_create(industry_name=ind_name)
+                 applicant.interested_industry.add(ind)
+                 
+             department_name = data_line['interested_department'].split(',')
+             for dprt_name in department_name:
+                 dprt,created = Department.objects.get_or_create(department_name=dprt_name)
+                 applicant.interested_department.add(dprt)
+             
+             education_data = {
+                'applicant_id': applicant,
+                'degree': data_line['degree'],
+                'field_of_specialization': data_line['field_of_specialization'],
+                'institute_name': data_line['institute_name'],
+                'date_of_completion': data_line['date_of_completion'],
+            }
             
-        # subject = 'Welcome to YourRecruitmentPortal!'
-        # message = f'Thank you {user.first_name} {user.last_name} for registering with YourRecruitmentPortal. We look forward to helping you find your dream job!'
-        # sender_email = settings.EMAIL_HOST_USER
-        # recipient_list = [user.email]
-        # send_mail(subject, message, sender_email, recipient_list)
-        return Response(
-                    {"message":"user applicant Registered Successfully", "success": True}
-               )
+            
+             industry_obj ,created = Industry.objects.get_or_create(industry_name=data_line['industry'])
+             department_obj,created = Department.objects.get_or_create(department_name=data_line['department'])
+             experience_data = {
+                "applicant_id": applicant,
+                "company_name": data_line["company_name"],
+                "designation": data_line["designation"],
+                "description": data_line["description"],
+                "department": department_obj,
+                "industry": industry_obj,
+                "salary": data_line["salary"],
+                "start_date": data_line["start_date"],
+                "end_date": data_line["end_date"],
+            }
+             internship_data = {
+                "applicant_id": applicant,
+                "company_name": data_line["internship_company_name"],
+                "position_title": data_line["internship_position_title"],
+                "project_name": data_line["internship_project_name"],
+                "description": data_line["internship_description"],
+                "start_date": data_line["internship_start_date"],
+                "end_date": data_line["internship_end_date"],
+                # "internship_certificate": data_line["internship_certificate"],
+            }
+             certificate_data = {
+                "applicant_id": applicant,
+                "certification_name": data_line["certification_name"],
+                "issuing_organization": data_line["issuing_organization"],
+                "issue_date": data_line["issue_date"],
+                # "certifcate": data_line["certifcate"],
+            }
+            
+             experience_obj = ApplicantExperience.objects.create(**experience_data)
+             certificate_obj = ApplicantCertification.objects.create(**certificate_data)
+             education_obj = ApplicantEducation.objects.create(**education_data)
+             internship_obj = ApplicantInternship.objects.create(**internship_data)
+             
+          return Response('Done')
     else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        validate_data = request.data
+        print('\n\n\n',validate_data,'\n\n\n')
+        role_object=Roles.objects.get(role_id=validate_data['role_id'])
+        user_data = {
+                'username': validate_data.get('username'),
+                'first_name': validate_data.get('first_name'),
+                'last_name': validate_data.get('last_name'),
+                'email': validate_data.get('email'),
+                'role_id': role_object
+            }
+        serializer=ApplicantSerializer(data=validate_data)
+        if serializer.is_valid():
+            user = CustomUser.objects.create(**user_data)
+            user.set_password(validate_data.get('password'))
+            user.save()
+            applicant=Applicants.objects.create(
+                      id = user,
+                      gender = validate_data['gender'],
+                      date_of_birth = validate_data['date_of_birth'],
+                      phone_number = validate_data['phone_number'],
+                      martial_status= validate_data['martial_status'],
+                      home_town= validate_data['home_town'],
+                      permanent_address= validate_data['permanent_address'],
+                      pincode= validate_data['pincode'],
+                      current_location= validate_data['current_location'],
+                      resume= validate_data['resume'],
+                      preferred_job_type=validate_data['preferred_job_type'],
+                      preferred_location=validate_data['preferred_location'],
+                      availability_to_join=validate_data['availability_to_join'],
+                      work_permit_for_USA=validate_data['work_permit_for_USA'],
+                      total_years_of_experience=validate_data['total_years_of_experience'],
+                      languages=validate_data['languages'],
+                      about=validate_data['about']
+                    )
+
+            skills = [int(skills) for skills in request.data.getlist('skills')]
+            applicant.skills.add(*skills)
+            interested_industry = [int(interested_industry) for interested_industry in request.data.getlist('interested_industry')]
+            applicant.interested_industry.add(*interested_industry)
+            interested_department = [int(interested_department) for interested_department in request.data.getlist('interested_department')]
+            applicant.interested_department.add(*interested_department)
+
+            applicant_serializer = ApplicantSerializer(applicant,data = validate_data)
+            if applicant_serializer.is_valid():
+                   applicant_serializer.save()
+
+            education_data = {
+                'applicant_id': applicant,
+                'degree': validate_data.get('degree'),
+                'field_of_specialization': validate_data.get('field_of_specialization'),
+                'institute_name': validate_data.get('institute_name'),
+                'date_of_completion': validate_data.get('date_of_completion'),
+            }
+
+            industry_obj = Industry.objects.get(industry_id=validate_data.get('industry'))
+            department_obj = Department.objects.get(department_id=validate_data.get('department'))
+            experience_data = {
+                "applicant_id": applicant,
+                "company_name": validate_data.get("company_name"),
+                "designation": validate_data.get("designation"),
+                "description": validate_data.get("description"),
+                "department": department_obj,
+                "industry": industry_obj,
+                "salary": validate_data.get("salary"),
+                "start_date": validate_data.get("start_date"),
+                "end_date": validate_data.get("end_date"),
+            }
+            internship_data = {
+                "applicant_id": applicant,
+                "company_name": validate_data.get("internship_company_name"),
+                "position_title": validate_data.get("internship_position_title"),
+                "project_name": validate_data.get("internship_project_name"),
+                "description": validate_data.get("internship_description"),
+                "start_date": validate_data.get("internship_start_date"),
+                "end_date": validate_data.get("internship_end_date"),
+                "internship_certificate": validate_data.get("internship_certificate"),
+            }
+            certificate_data = {
+                "applicant_id": applicant,
+                "certification_name": validate_data.get("certification_name"),
+                "issuing_organization": validate_data.get("issuing_organization"),
+                "issue_date": validate_data.get("issue_date"),
+                "certifcate": validate_data.get("certifcate"),
+            }
+            experience_obj = ApplicantExperience.objects.create(**experience_data)
+            certificate_obj = ApplicantCertification.objects.create(**certificate_data)
+            education_obj = ApplicantEducation.objects.create(**education_data)
+            internship_obj = ApplicantInternship.objects.create(**internship_data)
+            experience_serializer = ApplicantExperienceSerializer(experience_obj)
+            education_serializer = ApplicantEducationSerializer(education_obj)
+            internship_serializer = ApplicantInternshipSerializer(internship_obj)
+            certificate_serializer = ApplicantCertificationSerializer(certificate_obj)
+
+
+            # subject = 'Welcome to YourRecruitmentPortal!'
+            # message = f'Thank you {user.first_name} {user.last_name} for registering with YourRecruitmentPortal. We look forward to helping you find your dream job!'
+            # sender_email = settings.EMAIL_HOST_USER
+            # recipient_list = [user.email]
+            # send_mail(subject, message, sender_email, recipient_list)
+            return Response(
+                        {"message":"user applicant Registered Successfully", "success": True}
+                   )
+        else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @csrf_exempt
@@ -137,13 +237,19 @@ def complete_profile_applicant(request):
 # @permission_classes([IsAuthenticated])  
 def applicant(request, pk=None):
     if request.method == 'GET':
-                      
-    #     start_date=timezone.now() - timezone.timedelta(days=30)
-    #     end_date=timezone.now()
-    #     count=Applicants.objects.filter(created_at__range=[start_date,end_date]).count()
-        
-    #     if 'count' in request.query_params:
-    #         return Response({'Applicant_count':count})
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+
+        start_date = parse_datetime(start_date_str)
+        end_date = parse_datetime(end_date_str)
+
+        if not start_date or not end_date:
+            return Response({'error': 'Invalid date format. Use YYYY-MM-DD format for dates.'}, status=400)
+
+        count=Applicants.objects.filter(created_at__range=[start_date,end_date]).count()
+        if 'count' in request.query_params:
+            return Response({'Applicants created in the given time period ': count})
+       
         
         if pk is not None:
             try:

@@ -86,6 +86,8 @@ class Recruiter_Specific_Job2Serializer(serializers.ModelSerializer):
         
 
 class EmployeeLogSerializer(serializers.ModelSerializer):
+    first_name = serializers.CharField(source='recruiter_id.user_id.first_name')
+    last_name = serializers.CharField(source='recruiter_id.user_id.last_name')
     class Meta:
         model=EmployeeLog
         fields='__all__'

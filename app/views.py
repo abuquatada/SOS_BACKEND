@@ -17,6 +17,8 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.db import IntegrityError
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.contrib.auth.hashers import check_password
 
 
 
@@ -72,6 +74,11 @@ def login_view(request):
         print('\n\n\n',user_role,'\n\n\n')
         if user_role == 'Recruiter':
             access_token['recruiter_id']=user.recruiters.recruiter_id
+            login_log = EmployeeLog.objects.create(
+                    recruiter_id=user.recruiters.recruiter_id,
+                    activity_type='login',
+                    remarks='Logged in'
+                )
             print('\n\n\n',f'this is recruiter {user.recruiters.recruiter_id}','\n\n\n')
         elif user_role == 'Applicant':
             access_token['applicant_id']=user.applicants.applicant_id
@@ -138,8 +145,15 @@ class Logout(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        print('\n\n\n',request,'\n\n\n')
-        
+        role = str(request.user.role_id)
+        if role == 'Recruiter':
+            user_id = request.user.recruiters.recruiter_id
+            recruiter = Recruiters.objects.get(pk=user_id)
+            logout_log = EmployeeLog.objects.create(
+                    recruiter_id=recruiter,
+                    activity_type='logout',
+                    remarks='Logged out'
+                )   
         try:
             refresh_token = request.data.get("refresh_token")
             if not refresh_token:
@@ -152,3 +166,69 @@ class Logout(APIView):
         
         except Exception as e:
             return Response({"message":str(e)})
+        
+class PasswordResetRequestView(APIView):
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email'].strip().lower()
+            try:
+                user = CustomUser.objects.get(email__iexact=email) 
+            except user.DoesNotExist:
+                return Response({"error": "user with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
+            
+            token = PasswordResetTokenGenerator().make_token(user)
+            base_url = request.build_absolute_uri('/')[:-1]
+            reset_url = f"{base_url}/passwordresetconfirm/{user.id}/{token}/"
+            sender_email = settings.EMAIL_HOST_USER
+            recipient_email = user.email
+            try:
+                send_mail(
+                    'Password Reset Request',
+                    f'Hi {user.username},\nUse the link below to reset your password:\n{reset_url}',
+                    sender_email,
+                    [recipient_email],
+                    
+                )
+            except Exception as e:
+                return Response({"error": f"Failed to send email: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            return Response({"message": "Password reset link sent", "reset_url": reset_url}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class PasswordResetConfirmView(APIView):
+    def post(self,request,token,id):
+        print(f"Received ID--{id}-----token---{token}")
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        if serializer.is_valid():
+            password = serializer.validated_data['newpassword']
+            try:
+                user = CustomUser.objects.get(pk=id)
+                if PasswordResetTokenGenerator().check_token(user,token):
+                    user.set_password(password)
+                    user.save()
+                    return Response({"message": "Password reset successful"}, status=status.HTTP_200_OK)
+                return Response({"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+            except User.DoesNotExist:
+                return Response({"error": "Invalid user"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ChangePassword(APIView):
+    def post(self, request):
+        permission_classes = [IsAuthenticated]
+        serializer = ChangePasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            user = request.user
+            print(user)
+            old_password = serializer.validated_data['old_password']
+            new_password = serializer.validated_data['new_password']
+            
+            if not check_password(old_password, user.password):
+                return Response({"message":"Old password is incorrect."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            user.set_password(new_password)
+            user.save()
+            
+            return Response({"detail": "Password has been changed successfully."}, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

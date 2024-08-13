@@ -24,7 +24,15 @@ class RoleSerializer(serializers.ModelSerializer):
         model = Roles
         fields = '__all__'
 
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
 
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    newpassword = serializers.CharField()
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField()
+    new_password = serializers.CharField()
 
 
 ##----------------------
@@ -35,8 +43,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 class CustomTokenRefreshSerializer(TokenRefreshSerializer):
     def validate(self, attrs):
+        print('\n\n\n',"@@@@@@@,'\n\n\n")
         data = super().validate(attrs)
+        print('\n\n\n',f'this is data{data}','\n\n\n')
         refresh = RefreshToken(attrs['refresh'])
+        print('\n\n\n',f'Refresh{refresh}','\n\n\n')
         access_token = refresh.access_token
         user_id = refresh['user_id']
         try:
