@@ -104,8 +104,4 @@ urlpatterns = [
     path('interview/<int:pk>/',InterviewView),
     path('filter-interviwer/',FilterInterviwer.as_view()),
     path('filter_interview/',FilterInterview.as_view()),
-
-
-##-----------------------bulk addition-----------------
-   path('csv/',CSVUploadView.as_view())
 ]
