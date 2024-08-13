@@ -100,6 +100,7 @@ urlpatterns = [
     path('emp/<int:pk>/',emplog),
     path('filter-emplog/', FilterEmplog.as_view(), name='filter-emplog'),
     path('applicantcount/',applicantcount),
+    path('app_status/',application_status_count),
     path('applicationstatuslatestcount/',get_all_application_statuses),
     path('interviwer/',InterviwerViews),
     path('interviwer/<int:pk>/',InterviwerViews),
