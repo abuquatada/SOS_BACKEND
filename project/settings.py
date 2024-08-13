@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'applicant',
     'recruiter',
     'application',
+    'interviewer',
     'jobposting',
     'rest_framework_simplejwt.token_blacklist'
 ]
