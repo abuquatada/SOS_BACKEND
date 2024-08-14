@@ -108,4 +108,9 @@ urlpatterns = [
     path('interview/<int:pk>/',InterviewView),
     path('filter-interviwer/',FilterInterviwer.as_view()),
     path('filter_interview/',FilterInterview.as_view()),
+    path('interviewphase/',InterviewPhaseView),
+    path('interviewphase/<int:pk>/',InterviewPhaseView),
+    path('interviewquestions/',InterviewQuestionView),
+    path('interviewquestions/<int:pk>/',InterviewQuestionView),
+    path('filter-interview-questions/',FilterInterviewQuestion.as_view()),
 ]
