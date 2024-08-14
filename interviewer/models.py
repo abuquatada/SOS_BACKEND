@@ -29,3 +29,14 @@ class Interview(models.Model):
     virtual_link=models.URLField(max_length=100)
     status=models.CharField(max_length=100)
     notes=models.CharField(max_length=100)
+    
+class InterviewPhase(models.Model):
+    phase_id=models.AutoField(primary_key=True)
+    phase_name=models.CharField(max_length=100)
+    
+class InterviewQuestion(models.Model):
+    question_id=models.AutoField(primary_key=True)
+    phase=models.ForeignKey(InterviewPhase,on_delete=models.CASCADE)
+    question_text=models.CharField(max_length=500)
+    created_at=models.DateTimeField(auto_now_add=True)
+    updated_at=models.BigIntegerField()
