@@ -114,7 +114,7 @@ class FilterInterview(generics.ListAPIView):
     queryset=Interview.objects.all()
     serializer_class=InterviewSerializer
     filter_backends=[SearchFilter]
-    search_fields=['interview_id']
+    search_fields=['status']
     
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
 def InterviewPhaseView(request, pk=None):
