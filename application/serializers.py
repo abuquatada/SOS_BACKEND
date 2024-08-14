@@ -12,11 +12,11 @@ class ApplicationSerializer(serializers.ModelSerializer):
     applicant = ApplicantSerializer(read_only=True, source='applicant_id')
     company = CompanySerializer(read_only=True, source='company_id')
     referral = RecruiterSerializer(read_only=True, source='referral_id')
-    status = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField(read_only=True)
 
     def get_status(self, obj):
-        latest_log = ApplicationStatusLog.objects.filter(application_id=obj).order_by('-date_changed').first()
-        return latest_log.status_id.status_name if latest_log else None
+        latest_log = ApplicationStatusLog.objects.filter(application_id=obj)
+        return ApplicationStatusLogSerializer(latest_log,many=True).data
     
     class Meta:
         model = Application
