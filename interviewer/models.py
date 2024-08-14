@@ -18,15 +18,15 @@ class Interviewer(models.Model):
 class Interview(models.Model):
     interview_id=models.AutoField(primary_key=True)
     application_id=models.ForeignKey(Application,on_delete=models.CASCADE)
-    phase=models.CharField(max_length=100)
+    phase=models.ForeignKey('InterviewPhase',on_delete=models.DO_NOTHING,related_name='phase_interview')
     type=models.CharField(max_length=100,choices=[
         ('Onsite','Onsite'),
         ('Virtual','Virtual'),
     ],default='Onsite')
     scheduled_date=models.DateField(blank=True,null=True)
-    interviewer =models.ForeignKey(Interviewer,on_delete=models.CASCADE)
-    location=models.CharField(max_length=100)
-    virtual_link=models.URLField(max_length=100)
+    interviewer =models.ForeignKey(Interviewer,on_delete=models.CASCADE,related_name='interview_interviewer')
+    location=models.CharField(max_length=100,null=True,blank=True)
+    virtual_link=models.URLField(max_length=100,null=True,blank=True)
     status=models.CharField(max_length=100)
     notes=models.CharField(max_length=100)
     
@@ -39,4 +39,4 @@ class InterviewQuestion(models.Model):
     phase=models.ForeignKey(InterviewPhase,on_delete=models.CASCADE)
     question_text=models.CharField(max_length=500)
     created_at=models.DateTimeField(auto_now_add=True)
-    updated_at=models.BigIntegerField()
+    updated_at=models.DateTimeField(auto_now_add=True)

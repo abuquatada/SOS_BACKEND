@@ -16,13 +16,13 @@ def InterviwerViews(request, pk=None):
         if pk is not None:
             try:
                 Interviewerobj=Interviewer.objects.get(pk=pk)
-                serializers=interviwerSerializer(Interviewerobj)
+                serializers=InterviewerSerializer(Interviewerobj)
                 return Response(serializers.data)
             except:
                 return Response(status=status.HTTP_404_NOT_FOUND)
         else:
             Interviewerobj=Interviewer.objects.all()
-            serializers=interviwerSerializer(Interviewerobj,many=True).data
+            serializers=InterviewerSerializer(Interviewerobj,many=True).data
             return Response(serializers)
         
     elif request.method=='POST':
@@ -30,7 +30,7 @@ def InterviwerViews(request, pk=None):
           interviewer_data=request.data
         except:
             return Response (status=status.HTTP_404_NOT_FOUND)
-        serializers=interviwerSerializer(data=interviewer_data)
+        serializers=InterviewerSerializer(data=interviewer_data)
         if serializers.is_valid():
             serializers.save()
             return Response('Interviwer Added ',status=status.HTTP_200_OK)
@@ -42,7 +42,7 @@ def InterviwerViews(request, pk=None):
             print(interviewer_data)
         except:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        serializers=interviwerSerializer(interviewer_data,data=request.data,partial=True)
+        serializers=InterviewerSerializer(interviewer_data,data=request.data,partial=True)
         if serializers.is_valid():
             serializers.save()
             return Response('Update Successfully',status=status.HTTP_200_OK)
@@ -63,32 +63,34 @@ def InterviewView(request,pk=None):
         if pk is not None:
             try:
                 interview_obj=Interview.objects.get(pk=pk)
-                serializers=interviewSerializer(interview_obj)
+                serializers=InterviewSerializer(interview_obj)
                 return Response(serializers.data)
             except:
                 return Response(status=status.HTTP_404_NOT_FOUND)
         else:
             interview_obj=Interview.objects.all()
-            serializers=interviewSerializer(interview_obj,many=True)
+            serializers=InterviewSerializer(interview_obj,many=True)
             # print(serializers.data)
             return Response(serializers.data)
         
     elif request.method=='POST':
         try:
          interview_obj=request.data
+         print('\n\n\n',interview_obj,'\n\n\n')
         except:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        serializers=interviewSerializer(data=interview_obj)
+        serializers=InterviewSerializer(data=interview_obj)
         if serializers.is_valid():
             serializers.save()
             return Response('Interview Added',status=status.HTTP_200_OK)
         return Response(serializers.errors,status=status.HTTP_404_NOT_FOUND)
+    
     elif request.method=='PATCH':
         try:
           interview_obj=Interview.objects.get(pk=pk)
         except:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        serializers= interviewSerializer(interview_obj,data=request.data,partial=True)
+        serializers= InterviewSerializer(interview_obj,data=request.data,partial=True)
         if serializers.is_valid():
             serializers.save()
             return Response('Update Seccessfully',status=status.HTTP_200_OK)
@@ -104,13 +106,13 @@ def InterviewView(request,pk=None):
     
 class FilterInterviwer(generics.ListAPIView):
     queryset=Interviewer.objects.all()
-    serializer_class=interviwerSerializer
+    serializer_class=InterviewerSerializer
     filter_backends = [SearchFilter]
     search_fields=['first_name']
 
 class FilterInterview(generics.ListAPIView):
     queryset=Interview.objects.all()
-    serializer_class=interviewSerializer
+    serializer_class=InterviewSerializer
     filter_backends=[SearchFilter]
     search_fields=['interview_id']
     
