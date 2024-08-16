@@ -34,3 +34,10 @@ class InterviewQuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model=InterviewQuestion
         fields='__all__'
+ 
+ 
+class Interview_feedback_Serializer(serializers.ModelSerializer):
+    class Meta:
+        model = Interview_feedback
+        feilds = "__all__" 
+        
