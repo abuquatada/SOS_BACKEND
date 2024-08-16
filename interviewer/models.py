@@ -3,7 +3,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 from application.models import Application 
 
 class Interviewer(models.Model):
-    Interviewer_id=models.AutoField(primary_key=True)
+    interviewer_id=models.AutoField(primary_key=True)
     first_name=models.CharField(max_length=100)
     last_name=models.CharField(max_length=100)
     email=models.EmailField()

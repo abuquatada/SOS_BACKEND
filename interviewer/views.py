@@ -10,7 +10,7 @@ from .filters import *
 
 
 @api_view(['GET','POST','PATCH','DELETE'])
-def InterviwerViews(request, pk=None):
+def InterviewerViews(request, pk=None):
     
     if request.method=='GET':
         if pk is not None:
@@ -33,7 +33,7 @@ def InterviwerViews(request, pk=None):
         serializers=InterviewerSerializer(data=interviewer_data)
         if serializers.is_valid():
             serializers.save()
-            return Response('Interviwer Added ',status=status.HTTP_200_OK)
+            return Response('Interviewer Added ',status=status.HTTP_200_OK)
         
         return Response(serializers.errors,status=status.HTTP_404_NOT_FOUND)
     elif request.method=='PATCH':
@@ -104,17 +104,17 @@ def InterviewView(request,pk=None):
         interview_obj.delete()
         return Response('Delete Successfully',status=status.HTTP_200_OK)
     
-class FilterInterviwer(generics.ListAPIView):
+class FilterInterviewer(generics.ListAPIView):
     queryset=Interviewer.objects.all()
     serializer_class=InterviewerSerializer
-    filter_backends = [SearchFilter]
-    search_fields=['first_name']
+    filter_backends = [DjangoFilterBackend]
+    filterset_class=InterviewerFilter
 
 class FilterInterview(generics.ListAPIView):
     queryset=Interview.objects.all()
     serializer_class=InterviewSerializer
     filter_backends=[SearchFilter]
-    search_fields=['interview_id']
+    search_fields=['status']
     
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
 def InterviewPhaseView(request, pk=None):
