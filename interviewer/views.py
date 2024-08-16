@@ -211,7 +211,7 @@ def Interview_Feedback_View(request, pk=None):
     if request.method == "GET":
         if pk is not None:
             try:
-                feedback_obj = Interview_feedback.objects.get(id=pk)
+                feedback_obj = Interview_feedback.objects.get(feedback_id=pk)
                 serializer = Interview_feedback_Serializer(feedback_obj, many=False)
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except:
@@ -226,7 +226,7 @@ def Interview_Feedback_View(request, pk=None):
     elif request.method == "POST":
         data = request.data
         serializer = Interview_feedback_Serializer(data=data)
-        if serializer._is_valid():
+        if serializer.is_valid():
             serializer.save()
             return Response(
                 {"message": "Data Saved Successfully!"}, status=status.HTTP_201_CREATED
@@ -237,11 +237,11 @@ def Interview_Feedback_View(request, pk=None):
     elif request.method == "PUT":
         try:
             if pk is not None:
-                obj = Interview_feedback.objects.get(id=pk)
+                obj = Interview_feedback.objects.get(feedback_id=pk)
                 serializer = Interview_feedback_Serializer(
                     data=request.data, instance=obj
                 )
-                if serializer._is_valid():
+                if serializer.is_valid():
                     serializer.save()
                     return Response(
                         {"message": "data updated successfully!"},
@@ -255,7 +255,7 @@ def Interview_Feedback_View(request, pk=None):
 
     elif request.method == "DELETE":
         try:
-            objToDelete = Interview.objects.get(pk=pk)
+            objToDelete = Interview_feedback.objects.get(pk=pk)
         except:
             return Response(status=status.HTTP_404_NOT_FOUND)
         objToDelete.delete()
