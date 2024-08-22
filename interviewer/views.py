@@ -70,13 +70,11 @@ def InterviewView(request,pk=None):
         else:
             interview_obj=Interview.objects.all()
             serializers=InterviewSerializer(interview_obj,many=True)
-            # print(serializers.data)
             return Response(serializers.data)
         
     elif request.method=='POST':
         try:
          interview_obj=request.data
-         print('\n\n\n',interview_obj,'\n\n\n')
         except:
             return Response(status=status.HTTP_404_NOT_FOUND)
         serializers=InterviewSerializer(data=interview_obj)

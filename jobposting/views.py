@@ -1,4 +1,3 @@
-from django.shortcuts import render
 from rest_framework.response import Response
 from jobposting.serializers import *
 from jobposting.models import *
@@ -6,26 +5,22 @@ from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.decorators import api_view
 from django.core.mail import send_mail
-from django.conf import  settings
 from rest_framework import generics
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import *
-from django.contrib.auth import authenticate, login, logout
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework.permissions import IsAuthenticated
+from app.permissions import *
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import authentication_classes, permission_classes
-from django.db import IntegrityError
 from rest_framework import status
 from applicant.models import Applicants
-from rest_framework.parsers import MultiPartParser, FormParser
 import csv
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([])
 def jobstatus(request, pk=None):
     if request.method == 'GET':
         if pk:
@@ -73,6 +68,7 @@ def jobstatus(request, pk=None):
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
+@permission_classes([  ])
 def jobposting(request, pk=None):
     if request.method == 'GET':
         start_date_str = request.query_params.get('start_date')
@@ -139,6 +135,13 @@ def jobposting(request, pk=None):
             response_data = serializer.data
             if company_data:
                 response_data.update({'company': company_data})
+            print('\n\n\n',response_data['job_id'],'\n\n\n')
+            job_instance = JobPosting.objects.get(job_id=response_data['job_id'])
+            status__,created = JobStatus.objects.get_or_create(status_name='Active')
+            status_instance= JobStatusLog.objects.create(
+                job_id=job_instance,
+                status_id=status__
+            )
             return Response(response_data, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -170,7 +173,7 @@ def jobposting(request, pk=None):
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([  ])
 def jobstatuslog(request, pk=None):
     if request.method == 'GET':
         if pk:
@@ -215,7 +218,6 @@ def jobstatuslog(request, pk=None):
         jobstatuslog.delete()
         return Response('Deleted Successfully',status=status.HTTP_204_NO_CONTENT)
     
-# @permission_classes([IsAuthenticated])
 class FilterJobPosting(generics.ListAPIView):
     queryset = JobPosting.objects.all()
     serializer_class = JobPostingSerializer
@@ -223,7 +225,6 @@ class FilterJobPosting(generics.ListAPIView):
     filterset_class = JobPostingFilter
 
 
-# @permission_classes([IsAuthenticated])
 class FilterJobStatusLog(generics.ListAPIView):
     queryset = JobStatusLog.objects.all()
     serializer_class = JobStatusLogSerializer
@@ -233,7 +234,7 @@ class FilterJobStatusLog(generics.ListAPIView):
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([  ])
 def industry(request, pk=None):
     if request.method == 'GET':
         if pk is not None:
@@ -292,7 +293,7 @@ def industry(request, pk=None):
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([  ])
 def department(request, pk=None):
     if request.method == 'GET':
         if pk is not None:
@@ -378,7 +379,7 @@ def department(request, pk=None):
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([  ])
 def skills(request, pk=None):
     if request.method == 'GET':
         if pk is not None:
@@ -516,7 +517,7 @@ def company(request, pk=None):
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([  ])
 def location(request, company_id=None, location_id=None):
     if request.method == 'GET':
         if company_id:
@@ -580,7 +581,7 @@ def location(request, company_id=None, location_id=None):
         return Response('Deleted Successfully',status=status.HTTP_204_NO_CONTENT)
 
 
-# @permission_classes([IsAuthenticated])
+
 class FilterDepartment(generics.ListAPIView):
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
@@ -588,7 +589,7 @@ class FilterDepartment(generics.ListAPIView):
     filterset_class = DepartmentFilter
 
 
-# @permission_classes([IsAuthenticated])
+
 class FilterCompany(generics.ListAPIView):
     queryset = Company.objects.all()
     serializer_class =CompanySerializer
