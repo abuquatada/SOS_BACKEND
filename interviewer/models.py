@@ -2,6 +2,7 @@ from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
 from application.models import Application 
 
+
 class Interviewer(models.Model):
     Interviewer_id=models.AutoField(primary_key=True)
     first_name=models.CharField(max_length=100)
@@ -29,6 +30,9 @@ class Interview(models.Model):
     virtual_link=models.URLField(max_length=100)
     status=models.CharField(max_length=100)
     notes=models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"Interview {self.interview_id} for Application {self.application_id}"
     
 class InterviewPhase(models.Model):
     phase_id=models.AutoField(primary_key=True)

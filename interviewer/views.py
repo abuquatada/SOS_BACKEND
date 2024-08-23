@@ -7,6 +7,12 @@ from rest_framework import status,generics
 from rest_framework.filters import SearchFilter 
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import *
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from datetime import datetime, timedelta
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
+
 
 
 @api_view(['GET','POST','PATCH','DELETE'])
@@ -204,3 +210,79 @@ class FilterInterviewQuestion(generics.ListAPIView):
     filterset_class = InterviewQuestionFilter
 
 
+SERVICE_ACCOUNT_FILE = 'E:\Git_sos\SOS_BACKEND\project\sos.json'
+SCOPES = ['https://www.googleapis.com/auth/calendar']
+
+def get_google_calendar_service():
+    creds = service_account.Credentials.from_service_account_file(
+        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    return build('calendar', 'v3', credentials=creds)
+
+def create_event(interview):
+    try:
+        service = get_google_calendar_service()
+
+        scheduled_datetime = datetime.strptime(interview.scheduled_date, '%Y-%m-%d')
+
+        event = {
+            'summary': f'Interview with {interview.application_id}',
+            'description': 'Virtual interview via Google Meet',
+            'start': {
+                'dateTime': scheduled_datetime.isoformat(),
+                'timeZone': 'UTC',
+            },
+            'end': {
+                'dateTime': (scheduled_datetime + timedelta(hours=1)).isoformat(),
+                'timeZone': 'UTC',
+            },
+            'conferenceData': {
+                'createRequest': {
+                    'requestId': f"{interview.interview_id}-{int(scheduled_datetime.timestamp())}",
+                    'conferenceSolutionKey': {
+                        'type': 'hangoutsMeet'
+                    },
+                },
+            }
+        }
+
+        event_result = service.events().insert(
+            calendarId='primary',
+            body=event,
+            conferenceDataVersion=1
+        ).execute()
+
+        return event_result['hangoutLink']
+
+    except Exception as e:
+        print(f"An error occurred while creating the Google Meet event: {e}")
+        return None
+
+class ScheduleInterviewView(APIView):
+    def post(self, request, applicant_id):
+        application = get_object_or_404(Application, applicant_id=applicant_id)
+        
+        
+        interview_data = {
+            'application_id': application,
+            'phase': request.data.get('phase'),
+            'type': request.data.get('type', 'Onsite'),
+            'scheduled_date': request.data.get('scheduled_date'),
+            'interviewer': get_object_or_404(Interviewer, Interviewer_id=request.data.get('interviewer')),
+            'location': request.data.get('location', ''),
+            'status': request.data.get('status', 'Scheduled'),
+            'notes': request.data.get('notes', '')
+        }
+        
+     
+        interview = Interview(**interview_data)
+
+        if interview.type == 'Virtual':
+            interview.virtual_link = create_event(interview)
+        
+        interview.save()
+        
+        return Response({
+            'message': 'Interview scheduled successfully',
+            'interview_id': interview.interview_id,
+            'virtual_link': interview.virtual_link
+        }, status=status.HTTP_201_CREATED)

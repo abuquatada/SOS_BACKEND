@@ -113,4 +113,5 @@ urlpatterns = [
     path('interviewquestions/',InterviewQuestionView),
     path('interviewquestions/<int:pk>/',InterviewQuestionView),
     path('filter-interview-questions/',FilterInterviewQuestion.as_view()),
+    path('schedule-interview/<int:applicant_id>/', ScheduleInterviewView.as_view()),
 ]
