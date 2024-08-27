@@ -18,6 +18,8 @@ from rest_framework.decorators import authentication_classes, permission_classes
 from django.db import IntegrityError
 from rest_framework import status 
 import csv
+from datetime import datetime
+from collections import defaultdict
 
 
 @csrf_exempt
@@ -468,15 +470,46 @@ def emplog(request, pk=None):
        
         if pk:
             try:
-                emplog = EmployeeLog.objects.get(pk=pk)
-                serializer = EmployeeLogSerializer(emplog)
-                return Response(serializer.data)
+                emplog = EmployeeLog.objects.filter(recruiter_id=pk)
+                serializer_data = EmployeeLogSerializer(emplog,many=True).data
+                print('\n\n\n',serializer_data,'\n\n\n')
+                daily_hours = defaultdict(float)
+                login_time = None
+
+                for log in serializer_data:
+                    print('\n\n\n',f'Log - {log}')
+                    activity_time = datetime.fromisoformat(log['activity_time'][:-1])  
+                    print('\n\n\n',f'Activity - {activity_time}','\n\n\n')
+                    log_date = log['date']
+
+                    if log['activity_type'] == 'login':
+                        login_time = activity_time
+                        print('\n\n\n',f'Login_time - {login_time}','\n\n\n')
+                    elif log['activity_type'] == 'logout' and login_time is not None:
+                        logout_time = activity_time
+                        print('\n\n\n',f'Logout_time - {logout_time}','\n\n\n')
+                        session_duration = logout_time - login_time
+                        print('\n\n\n',f'Session duration - {session_duration}')
+                        daily_hours[log_date] += session_duration.total_seconds() / 3600  
+                        login_time = None
+
+                print('\n\n\n',f'Daily hours - {daily_hours}','\n\n\n')
+                if daily_hours is not None:
+                    for date, hours in daily_hours.items():
+                        total_minutes = int(hours * 60)
+                        hours_part = total_minutes // 60
+                        minutes_part = total_minutes % 60
+                        print('\n\n',f"Total login hours on {date}: {hours_part} hours {minutes_part} minutes",'\n\n')
+                        serializer_data.append(f'login hours on - {date}: {hours_part} hours {minutes_part} minutes')
+                        return Response(serializer_data)
+                return Response(serializer_data)
             except EmployeeLog.DoesNotExist:
                 return Response({'employeelog not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             emplogs = EmployeeLog.objects.all().order_by('recruiter_id')
-            serializer = EmployeeLogSerializer(emplogs, many=True)
-            return Response(serializer.data)
+            serializer_data = EmployeeLogSerializer(emplogs, many=True).data
+            print('\n\n\n',serializer_data,'\n\n\n')
+            return Response(serializer_data)
 
     elif request.method == 'POST':
         user_id = request.data.get('user')

@@ -52,9 +52,7 @@ def application(request, pk=None):
         serializer = ApplicationSerializer(data=data)
         print(request.data)
         if serializer.is_valid():
-            
             serializer.save()
-            
             return Response('Added Successfully', status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

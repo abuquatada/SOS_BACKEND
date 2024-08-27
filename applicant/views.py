@@ -26,7 +26,7 @@ import csv
 
 @csrf_exempt
 @api_view(['POST'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated])
 def complete_profile_applicant(request):
     if 'file' in request.FILES:
           csv_file = request.FILES['file']

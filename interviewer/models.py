@@ -23,11 +23,11 @@ class Interview(models.Model):
         ('Onsite','Onsite'),
         ('Virtual','Virtual'),
     ],default='Onsite')
-    scheduled_date=models.DateField(blank=True,null=True)
+    scheduled_date=models.DateTimeField(blank=True,null=True)
     interviewer =models.ForeignKey(Interviewer,on_delete=models.CASCADE,related_name='interview_interviewer')
     location=models.CharField(max_length=100,null=True,blank=True)
     virtual_link=models.URLField(max_length=100,null=True,blank=True)
-    status=models.CharField(max_length=100)
+    status=models.CharField(max_length=100,null=True)
     notes=models.CharField(max_length=100)
     
 class InterviewPhase(models.Model):
@@ -45,4 +45,4 @@ class Interview_feedback(models.Model):
     feedback_id =models.AutoField(primary_key=True)
     Interview = models.OneToOneField(Interview, on_delete=models.CASCADE)
     rating = models.IntegerField()
-    comments = models.CharField(max_length=100)    
+    comments = models.CharField(max_length=100)     

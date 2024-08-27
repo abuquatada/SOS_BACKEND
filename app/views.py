@@ -10,9 +10,11 @@ from django.core.mail import send_mail
 from django.conf import  settings
 from rest_framework import generics
 from django_filters.rest_framework import DjangoFilterBackend
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate
 from django.views.decorators.csrf import csrf_exempt
+from .permissions import *
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import permission_classes
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.db import IntegrityError
 from rest_framework import status
@@ -22,7 +24,7 @@ from django.contrib.auth.hashers import check_password
 
 
 
-# @permission_classes([IsAuthenticated])     
+@permission_classes([GETPermissions])     
 class User(APIView):  
      def get(self,request):
           users = CustomUser.objects.all()
@@ -74,8 +76,9 @@ def login_view(request):
         print('\n\n\n',user_role,'\n\n\n')
         if user_role == 'Recruiter':
             access_token['recruiter_id']=user.recruiters.recruiter_id
+            recruiter_instance = Recruiters.objects.get(recruiter_id=user.recruiters.recruiter_id)
             login_log = EmployeeLog.objects.create(
-                    recruiter_id=user.recruiters.recruiter_id,
+                    recruiter_id=recruiter_instance,
                     activity_type='login',
                     remarks='Logged in'
                 )
@@ -96,7 +99,7 @@ def login_view(request):
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([GETPermissions])
 def roles(request, pk=None):
     if request.method == 'GET':
         if pk is not None:
@@ -214,8 +217,9 @@ class PasswordResetConfirmView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ChangePassword(APIView):
+    permission_classes = [IsAuthenticated]
+    
     def post(self, request):
-        permission_classes = [IsAuthenticated]
         serializer = ChangePasswordSerializer(data=request.data)
         if serializer.is_valid():
             user = request.user

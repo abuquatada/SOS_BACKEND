@@ -26,6 +26,11 @@ class ApplicationSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         application = super().create(validated_data)
         print(application)
+        status,created = ApplicationStatus.objects.get_or_create(status_name='Pending')
+        app_log = ApplicationStatusLog.objects.create(
+                                application_id=application,
+                                status_id=status
+            )
         job_posting = application.job_id
         job_posting.application_count += 1
         job_posting.save()
