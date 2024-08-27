@@ -114,5 +114,6 @@ urlpatterns = [
     path('interviewquestions/<int:pk>/',InterviewQuestionView),
     path('filter-interview-questions/',FilterInterviewQuestion.as_view()),
     path('feedback/', Interview_Feedback_View),
-    path('feedback/<int:pk>/', Interview_Feedback_View)
+    path('feedback/<int:pk>/', Interview_Feedback_View),
+    path('jobpostingcsv/',JobpostingCSV),
 ]

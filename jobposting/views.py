@@ -14,9 +14,10 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import authentication_classes, permission_classes
 from rest_framework import status
 from applicant.models import Applicants
-import csv
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
+import csv
+from datetime import datetime
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
@@ -595,3 +596,79 @@ class FilterCompany(generics.ListAPIView):
     serializer_class =CompanySerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = CompanyFilter
+
+
+
+
+@api_view(['POST'])
+def JobpostingCSV(request, format=None):
+    if 'file' not in request.FILES:
+        return Response('File not found', status=status.HTTP_400_BAD_REQUEST)
+    csv_file = request.FILES['file']
+    decoded_file = csv_file.read().decode('utf-8').splitlines()
+    reader = csv.DictReader(decoded_file)
+
+    try:
+        for line in reader:
+            company, created= Company.objects.get_or_create(company_name=line['company_name'])
+            industry, created = Industry.objects.get_or_create(industry_name=line['industry_name'])
+            department, created = Department.objects.get_or_create(
+                department_name=line['department_name']
+            )
+            application_deadline = datetime.strptime(line['application_deadline'], '%m/%d/%Y') if line['application_deadline'] else None
+
+
+            location = Location.objects.filter(
+                company_id=company,
+                address=line['address'],
+                city=line['city'],
+                state=line['state'],
+                postal_code=line['postal_code'],
+                country=line['country']
+            ).first()
+
+
+            if not location:
+                location = Location.objects.create(
+                    company_id=company,
+                    address=line['address'],
+                    city=line['city'],
+                    state=line['state'],
+                    postal_code=line['postal_code'],
+                    country=line['country']
+                )
+
+
+            jobposting, created = JobPosting.objects.get_or_create(
+                job_title=line['job_title'],
+                defaults={
+                    'company': company,
+                    'job_position': line['job_position'],
+                    'industry_id': industry,
+                    'department_id': department,
+                    'job_type': line['job_type'],
+                    'description': line['description'],
+                    'requirements': line['requirements'],
+                    'benefits': line['benefits'],
+                    'salary': line['salary'],
+                    'location_type': line['location_type'],
+                    'location': location,
+                    'application_deadline': application_deadline,
+                    'application_instructions': line['application_instructions']
+                }
+            )
+
+
+            if 'skills' in line and line['skills']:
+                skill_names = line['skills'].split(',')
+                for skill_name in skill_names:
+                    skill, created = Skill.objects.get_or_create(skill_name=skill_name.strip())
+                    jobposting.skills.add(skill)
+
+            if created:
+                jobposting.save()
+
+    except Exception as e:
+        return Response(f"Error processing CSV: {e}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response('Job postings processed successfully', status=status.HTTP_201_CREATED)

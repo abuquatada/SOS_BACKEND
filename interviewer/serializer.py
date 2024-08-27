@@ -17,6 +17,7 @@ class InterviewSerializer(serializers.ModelSerializer):
     phase_details = serializers.SerializerMethodField(read_only=True)
     interviewer_details = serializers.SerializerMethodField(read_only=True)
     
+    
     class Meta:
         model=Interview
         fields='__all__'
@@ -30,7 +31,7 @@ class InterviewSerializer(serializers.ModelSerializer):
                 
 
 class InterviewQuestionSerializer(serializers.ModelSerializer):
-    phase = InterviewPhaseSerializer()
+    phase_name = serializers.CharField(source='phase.phase_name',read_only=True)
     class Meta:
         model=InterviewQuestion
         fields='__all__'
