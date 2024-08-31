@@ -7,11 +7,24 @@ from rest_framework import status,generics
 from rest_framework.filters import SearchFilter 
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import *
-from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from datetime import datetime, timedelta
-from rest_framework.views import APIView
+from django.http import JsonResponse
+from django.conf import settings
+from google.oauth2.credentials import Credentials
+from django.shortcuts import redirect
+from google_auth_oauthlib.flow import Flow
+import os
+from django.http import HttpResponseRedirect
+from django.core.mail import send_mail
+from apiclient import discovery
+from httplib2 import Http
+from oauth2client import client, file, tools
+import argparse
+import logging
 from django.shortcuts import get_object_or_404
+
+
 
 
 
@@ -209,80 +222,225 @@ class FilterInterviewQuestion(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend]
     filterset_class = InterviewQuestionFilter
 
+def google_authenticate(request):
+    print("google_authenticate view called") 
+    flow = Flow.from_client_secrets_file(
+        os.path.join(settings.BASE_DIR, 'sos.json'),
+        scopes=['https://www.googleapis.com/auth/calendar.events',
+                'https://www.googleapis.com/auth/forms.body'],
+        redirect_uri='http://127.0.0.1:8000/google/callback/'
+    )
+    
+    authorization_url, state = flow.authorization_url(
+        access_type='offline',
+        include_granted_scopes='true'
+    )
 
-SERVICE_ACCOUNT_FILE = 'E:\Git_sos\SOS_BACKEND\project\sos.json'
-SCOPES = ['https://www.googleapis.com/auth/calendar']
+    print(f"Authorization URL: {authorization_url}")
 
-def get_google_calendar_service():
-    creds = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-    return build('calendar', 'v3', credentials=creds)
+    logging.info(f"Authorization URL: {authorization_url}")
+    request.session['state'] = state
+    print(f"Generated state: {state}")
+    print(f"Session state set: {request.session.get('state')}")
+    
+    return redirect(authorization_url)
 
-def create_event(interview):
+def google_callback_view(request):
+    stored_state = request.session.get('state')
+    returned_state = request.GET.get('state')
+    print(f"Stored state: {stored_state}")
+    print(f"Returned state: {returned_state}")
+
+    flow = Flow.from_client_secrets_file(
+        os.path.join(settings.BASE_DIR, 'sos.json'),
+        scopes=['https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/forms.body'],
+        state=returned_state,
+        redirect_uri='http://127.0.0.1:8000/google/callback/'
+    )
+    authorization_response = request.build_absolute_uri()
+    
     try:
-        service = get_google_calendar_service()
-
-        scheduled_datetime = datetime.strptime(interview.scheduled_date, '%Y-%m-%d')
-
-        event = {
-            'summary': f'Interview with {interview.application_id}',
-            'description': 'Virtual interview via Google Meet',
-            'start': {
-                'dateTime': scheduled_datetime.isoformat(),
-                'timeZone': 'UTC',
-            },
-            'end': {
-                'dateTime': (scheduled_datetime + timedelta(hours=1)).isoformat(),
-                'timeZone': 'UTC',
-            },
-            'conferenceData': {
-                'createRequest': {
-                    'requestId': f"{interview.interview_id}-{int(scheduled_datetime.timestamp())}",
-                    'conferenceSolutionKey': {
-                        'type': 'hangoutsMeet'
-                    },
-                },
-            }
+        flow.fetch_token(authorization_response=authorization_response)
+        credentials = flow.credentials
+        request.session['credentials'] = {
+            'token': credentials.token,
+            'refresh_token': credentials.refresh_token,
+            'token_uri': credentials.token_uri,
+            'client_id': credentials.client_id,
+            'client_secret': credentials.client_secret,
+            'scopes': credentials.scopes
         }
-
-        event_result = service.events().insert(
-            calendarId='primary',
-            body=event,
-            conferenceDataVersion=1
-        ).execute()
-
-        return event_result['hangoutLink']
-
+        print(f"Stored credentials: {request.session.get('credentials')}") 
+        print(f"Session ID in callback view: {request.session.session_key}")
+        print(f"Session data in callback view: {request.session.items()}")
+        
+        return redirect('create_and_schedule_interview')
     except Exception as e:
-        print(f"An error occurred while creating the Google Meet event: {e}")
-        return None
-
-class ScheduleInterviewView(APIView):
-    def post(self, request, applicant_id):
-        application = get_object_or_404(Application, applicant_id=applicant_id)
-        
-        
-        interview_data = {
-            'application_id': application,
-            'phase': request.data.get('phase'),
-            'type': request.data.get('type', 'Onsite'),
-            'scheduled_date': request.data.get('scheduled_date'),
-            'interviewer': get_object_or_404(Interviewer, Interviewer_id=request.data.get('interviewer')),
-            'location': request.data.get('location', ''),
-            'status': request.data.get('status', 'Scheduled'),
-            'notes': request.data.get('notes', '')
-        }
-        
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
      
-        interview = Interview(**interview_data)
+logger = logging.getLogger(__name__)
 
-        if interview.type == 'Virtual':
-            interview.virtual_link = create_event(interview)
+
+def create_google_meet_link(request, interview):
+    print(f"Session ID in create view: {request.session.session_key}")
+    print(f"Session data in create link view: {request.session.items()}")
+    credentials = request.session.get('credentials')
+    print(f"Stored credentials: {credentials}")
+
+    if not credentials:
+        print("No credentials found in session. Redirecting to Google authentication.")
+        return redirect('google_authenticate')
+
+    creds = Credentials(**credentials)
+    service = build('calendar', 'v3', credentials=creds)
+
+    event = {
+        'summary': f'Interview: {interview.phase}',
+        'description': interview.notes,
+        'start': {
+            'dateTime': interview.scheduled_date.strftime('%Y-%m-%dT%H:%M:%S'),
+            'timeZone': 'UTC',
+        },
+        'end': {
+            'dateTime': (interview.scheduled_date + timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%S'),
+            'timeZone': 'UTC',
+        },
+        'conferenceData': {
+            'createRequest': {
+                'requestId': f"{interview.application_id}",
+                'conferenceSolutionKey': {
+                    'type': 'hangoutsMeet'
+                },
+                'status': {
+                    'statusCode': 'success'
+                }
+            },
+        },
+    }
+    event = service.events().insert(calendarId='primary', body=event, conferenceDataVersion=1).execute()
+    return event['hangoutLink']
+
+@api_view(['POST'])
+def create_and_schedule_interview(request):
+    try:
+        application_id = request.data.get('application_id')
+        phase = request.data.get('phase')
+        interview_type = request.data.get('type', 'Onsite')
+        scheduled_date_str = request.data.get('scheduled_date')
+        interviewer_id = request.data.get('interviewer')
+        location = request.data.get('location')
+        status_field = request.data.get('status')
+        notes = request.data.get('notes')
+
+        if not all([application_id, phase, scheduled_date_str, interviewer_id, status_field]):
+            return JsonResponse({'status': 'error', 'message': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        scheduled_date = datetime.strptime(scheduled_date_str, '%Y-%m-%dT%H:%M:%S')
+
+        application = Application.objects.get(pk=application_id)
+        interviewer = Interviewer.objects.get(pk=interviewer_id)
+
+        interview = Interview.objects.create(
+            application_id=application,
+            phase=phase,
+            type=interview_type,
+            scheduled_date=scheduled_date,
+            interviewer=interviewer,
+            location=location,
+            status=status_field,
+            notes=notes
+        )
+        request.session['interview_id'] = interview.interview_id
+
+        if interview_type == 'Virtual':
+            meet_link = create_google_meet_link(request, interview)
+            if isinstance(meet_link, HttpResponseRedirect):
+                return meet_link  
+            interview.virtual_link = meet_link
         
         interview.save()
-        
-        return Response({
-            'message': 'Interview scheduled successfully',
+
+        form_url = create_google_form()
+        applicant_email = application.applicant_id.id.email
+        send_form_email(applicant_email, form_url)
+
+        return JsonResponse({
+            'status': 'success',
             'interview_id': interview.interview_id,
-            'virtual_link': interview.virtual_link
+            'virtual_link': interview.virtual_link if interview.type == 'Virtual' else None,
+            'form_url': form_url
         }, status=status.HTTP_201_CREATED)
+
+    except Application.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Application not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Interviewer.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Interviewer not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+SCOPES = ['https://www.googleapis.com/auth/calendar.events',
+            'https://www.googleapis.com/auth/forms.body']
+DISCOVERY_DOC = "https://forms.googleapis.com/$discovery/rest?version=v1"
+
+TOKEN_FILE = 'token.json' 
+  
+def create_google_form():
+    parser = argparse.ArgumentParser(parents=[tools.argparser])
+    flags = parser.parse_args([])  # Pass an empty list to avoid the conflict
+
+    store = file.Storage(TOKEN_FILE)
+    creds = store.get()
+    if not creds or creds.invalid:
+        flow = client.flow_from_clientsecrets(settings.GOOGLE_CLIENT_SECRETS_FILE, SCOPES , redirect_uri='http://127.0.0.1:8000/google/callback/')
+        creds = tools.run_flow(flow, store, flags)  # Pass the empty flags object
+
+    form_service = discovery.build(
+        "forms", "v1", http=creds.authorize(Http()), discoveryServiceUrl=DISCOVERY_DOC, static_discovery=False
+    )
+    NEW_FORM = {
+        "info": {
+            "title": "Interview Feedback Form",
+        }
+    }
+
+    NEW_QUESTION = {
+        "requests": [
+            {
+                "createItem": {
+                    "item": {
+                        "title": "How satisfied were you with the interview process?",
+                        "questionItem": {
+                            "question": {
+                                "required": True,
+                                "choiceQuestion": {
+                                    "type": "RADIO",
+                                    "options": [
+                                        {"value": "Very Satisfied"},
+                                        {"value": "Satisfied"},
+                                        {"value": "Neutral"},
+                                        {"value": "Dissatisfied"},
+                                        {"value": "Very Dissatisfied"},
+                                    ],
+                                    "shuffle": True,
+                                },
+                            }
+                        },
+                    },
+                    "location": {"index": 0},
+                }
+            }
+        ]
+    }
+
+    result = form_service.forms().create(body=NEW_FORM).execute()
+    form_service.forms().batchUpdate(formId=result["formId"], body=NEW_QUESTION).execute()
+
+    form_url = f"https://docs.google.com/forms/d/{result['formId']}/viewform"
+    return form_url
+
+def send_form_email(applicant_email, form_url):
+    subject = "Your Interview Feedback Form"
+    message = f"Dear Applicant,\n\nPlease fill out the interview feedback form using the following link:\n{form_url}\n\nBest regards,\nYour Company"
+    email_from = settings.EMAIL_HOST_USER
+    recipient_list = [applicant_email]
+    send_mail(subject, message, email_from, recipient_list)

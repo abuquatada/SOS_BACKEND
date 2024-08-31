@@ -27,7 +27,7 @@ class Interview(models.Model):
     scheduled_date=models.DateField(blank=True,null=True)
     interviewer =models.ForeignKey(Interviewer,on_delete=models.CASCADE)
     location=models.CharField(max_length=100)
-    virtual_link=models.URLField(max_length=100)
+    virtual_link=models.URLField(max_length=100 , null=True , blank=True)
     status=models.CharField(max_length=100)
     notes=models.CharField(max_length=100)
 

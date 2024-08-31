@@ -113,5 +113,8 @@ urlpatterns = [
     path('interviewquestions/',InterviewQuestionView),
     path('interviewquestions/<int:pk>/',InterviewQuestionView),
     path('filter-interview-questions/',FilterInterviewQuestion.as_view()),
-    path('schedule-interview/<int:applicant_id>/', ScheduleInterviewView.as_view()),
+    path('create_and_schedule_interview/', create_and_schedule_interview , name='create_and_schedule_interview'),
+    path('createlink/', create_google_meet_link, name='create_google_meet_link'),
+    path('google/authenticate/', google_authenticate, name='google_authenticate'),
+    path('google/callback/', google_callback_view, name='google_callback')
 ]
