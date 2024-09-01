@@ -12,6 +12,16 @@ from datetime import datetime
 from django.core.mail import send_mail
 from django.conf import  settings
 from .meet import create_google_meet_event
+import logging
+import uuid
+import os
+import json
+from dotenv import load_dotenv
+from google_auth_oauthlib.flow import Flow
+from django.http import HttpResponseRedirect
+from rest_framework.views import APIView
+from django.http import JsonResponse
+from googleapiclient.discovery import build
 
 
 
@@ -210,11 +220,11 @@ class FilterInterviewer(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend]
     filterset_class=InterviewerFilter
 
-class FilterInterview(generics.ListAPIView):
-    queryset=Interview.objects.all()
-    serializer_class=InterviewSerializer
-    filter_backends=[SearchFilter]
-    search_fields=['status']
+class InterviewListView(generics.ListAPIView):
+    queryset = Interview.objects.all()
+    serializer_class = InterviewSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = InterviewFilter
     
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
 def InterviewPhaseView(request, pk=None):
@@ -395,7 +405,202 @@ def InterviewerCSV(request, format=None):
     except Exception as e:
         return Response(f"Error processing CSV: {e}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    return Response('Interviewers added successfully', status=status.HTTP_201_CREATED)        
+    return Response('Interviewers added successfully', status=status.HTTP_201_CREATED)  
+
+
+
+
+#-----Google Form----
+
+logger = logging.getLogger(__name__)
+load_dotenv()
+client_secret_json_str = os.getenv('GOOGLE_CLIENT_SECRET_JSON')
+CLIENT_CONFIG = json.loads(client_secret_json_str)
+
+SCOPES = ['https://www.googleapis.com/auth/forms',
+           'https://www.googleapis.com/auth/forms.body']
+
+class GoogleFormsInitView(APIView):
+    def get(self, request):
+        try:
+            state = str(uuid.uuid4())
+            request.session['state'] = state
+
+            flow = Flow.from_client_config(CLIENT_CONFIG, SCOPES)
+            flow.redirect_uri = "http://127.0.0.1:8000/google/forms/redirect/"
+            authorization_url, _ = flow.authorization_url(state=state)
+
+            return HttpResponseRedirect(authorization_url)
+        except Exception as e:
+            logger.error(f'Error in GoogleFormsInitView: {str(e)}')
+            return JsonResponse({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class GoogleFormsRedirectView(APIView):
+    def set_session(self, request, credentials):
+        request.session['credentials'] = {
+            'token': credentials.token,
+            'refresh_token': credentials.refresh_token,
+            'token_uri': credentials.token_uri,
+            'client_id': credentials.client_id,
+            'client_secret': credentials.client_secret,
+            'scopes': credentials.scopes,
+        }
+
+    def create_form(self, service):
+        try:
+            form = service.forms().create(body={
+                'info': {
+                    'title': 'Interview Feed Back Form',
+                }
+            }).execute()
+
+            form_id = form.get('formId', 'No Form ID')
+            return form_id
+        except Exception as e:
+            logger.error(f'Error in create_form: {str(e)}')
+            raise
+
+    def update_form(self, service, form_id):
+        try:
+            FormField = [
+                
+                {
+                    'createItem': {
+                        'item': {
+                            'title': 'Name',
+                            'questionItem': {
+                                'question': {
+                                    'required': True,
+                                    'textQuestion': {}
+                                }
+                            }
+                        },
+                        'location': {
+                            'index': 0
+                        }
+                    }
+                },
+                {
+                    'createItem': {
+                        'item': {
+                            'title': 'Email',
+                            'questionItem': {
+                                'question': {
+                                    'required': True,
+                                    'textQuestion': {
+                                        'paragraph': False
+                                    }
+                                }
+                            }
+                        },
+                        'location': {
+                            'index': 1
+                        }
+                    }
+                },
+                {
+                    'createItem': {
+                        'item': {
+                            'title': 'Mobile Number',
+                            'questionItem': {
+                                'question': {
+                                    'required': True,
+                                    'textQuestion': {}
+                                }
+                            }
+                        },
+                        'location': {
+                            'index': 2
+                        }
+                    }
+                },
+                {
+                    'createItem': {
+                        'item': {
+                            'title': 'Feed Back',
+                            'questionItem': {
+                                'question': {
+                                    'required': True,
+                                    'textQuestion': {}
+                                }
+                            }
+                        },
+                        'location': {
+                            'index': 3
+                        }
+                    }
+                }
+            ]
+
+            service.forms().batchUpdate(
+                formId=form_id,
+                body={'requests': FormField}
+            ).execute()
+
+        except Exception as e:
+            logger.error(f'Error in update_form: {str(e)}')
+            raise
+
+    def process_form(self, credentials):
+        try:
+            service = build('forms', 'v1', credentials=credentials)
+            form_id = self.create_form(service)
+            self.update_form(service, form_id)
+
+
+            form_url = f"https://docs.google.com/forms/d/{form_id}/edit"
+            return form_url
+        except Exception as e:
+            logger.error(f'Error in process_form: {str(e)}')
+            return None
+
+    def get_responses(self, service, form_id):
+        try:
+            responses = service.forms().responses().list(formId=form_id).execute()
+            return responses.get('responses', [])
+        except Exception as e:
+            logger.error(f'Error fetching form responses: {str(e)}')
+            return []
+
+    def print_responses(self, responses):
+        for response in responses:
+            logger.info(f"Response: {response}")
+            # print(f"Response: {response}")
+
+    def get(self, request):
+        try:
+            state = request.session.get('state')
+
+            if not state:
+                return JsonResponse({"error": "Missing state"}, status=400)
+
+            flow = Flow.from_client_config(CLIENT_CONFIG, SCOPES)
+            flow.redirect_uri = "http://127.0.0.1:8000/google/forms/redirect/"
+            flow.fetch_token(authorization_response=request.build_absolute_uri())
+
+            credentials = flow.credentials
+            self.set_session(request, credentials)
+
+            form_url = self.process_form(credentials)
+
+            if form_url:
+
+                service = build('forms', 'v1', credentials=credentials)
+                form_id = form_url.split('/d/')[1].split('/')[0]
+                responses = self.get_responses(service, form_id)
+                
+
+                return HttpResponseRedirect(form_url)
+            else:
+                return JsonResponse({"error": "Failed to create or update form"}, status=500)
+
+        except Exception as e:
+            logger.error(f'Error in GoogleFormsRedirectView: {str(e)}')
+            return JsonResponse({"error": str(e)}, status=500)
+
+
+
 
 
 
