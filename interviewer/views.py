@@ -97,7 +97,16 @@ def InterviewerViews(request, pk=None):
 @api_view(['GET','POST','PATCH','DELETE'])
 def InterviewView(request,pk=None):
     if request.method=='GET':
-        if pk is not None:
+        app_id = request.GET.get('app_id')
+        if app_id :
+            try:
+                interview_obj=Interview.objects.filter(application_id=app_id)
+                serializers=InterviewSerializer(interview_obj,many=True)
+                return Response(serializers.data)
+            except:
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            
+        elif pk is not None:
             try:
                 interview_obj=Interview.objects.get(pk=pk)
                 serializers=InterviewSerializer(interview_obj)
@@ -213,8 +222,8 @@ class FilterInterviewer(generics.ListAPIView):
 class FilterInterview(generics.ListAPIView):
     queryset=Interview.objects.all()
     serializer_class=InterviewSerializer
-    filter_backends=[SearchFilter]
-    search_fields=['status']
+    filter_backends=[DjangoFilterBackend]
+    filterset_class=InterviewFilter
     
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
 def InterviewPhaseView(request, pk=None):
