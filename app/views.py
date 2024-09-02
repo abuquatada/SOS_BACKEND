@@ -19,10 +19,13 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.contrib.auth.hashers import check_password
+from app.permissions import *
+from rest_framework.permissions import AllowAny
+from rest_framework.decorators import  permission_classes
 
 
 
-# @permission_classes([IsAuthenticated])     
+@permission_classes([IsAdmin])     
 class User(APIView):  
      def get(self,request):
           users = CustomUser.objects.all()
@@ -31,6 +34,7 @@ class User(APIView):
 
 @csrf_exempt     
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def register(request):
     validate_data = request.data
     try:
@@ -62,6 +66,7 @@ def register(request):
 
 @csrf_exempt
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def login_view(request):
     username = request.data.get('username')
     password = request.data.get('password')
@@ -96,7 +101,7 @@ def login_view(request):
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([IsAdmin])
 def roles(request, pk=None):
     if request.method == 'GET':
         if pk is not None:
@@ -168,6 +173,7 @@ class Logout(APIView):
             return Response({"message":str(e)})
         
 class PasswordResetRequestView(APIView):
+    permission_classes = [IsAuthenticated]
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
         if serializer.is_valid():

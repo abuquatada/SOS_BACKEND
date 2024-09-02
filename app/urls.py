@@ -116,5 +116,6 @@ urlpatterns = [
     path('create_and_schedule_interview/', create_and_schedule_interview , name='create_and_schedule_interview'),
     path('createlink/', create_google_meet_link, name='create_google_meet_link'),
     path('google/authenticate/', google_authenticate, name='google_authenticate'),
-    path('google/callback/', google_callback_view, name='google_callback')
+    path('google/callback/', google_callback_view, name='google_callback'),
+    path('formresponse/<str:form_id>/', form_responses, name='form_responses')
 ]

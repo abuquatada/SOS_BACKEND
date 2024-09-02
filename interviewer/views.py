@@ -21,8 +21,11 @@ from apiclient import discovery
 from httplib2 import Http
 from oauth2client import client, file, tools
 import argparse
-import logging
+from oauth2client import tools
 from django.shortcuts import get_object_or_404
+import json
+from googleapiclient.errors import HttpError
+
 
 
 
@@ -227,7 +230,29 @@ def google_authenticate(request):
     flow = Flow.from_client_secrets_file(
         os.path.join(settings.BASE_DIR, 'sos.json'),
         scopes=['https://www.googleapis.com/auth/calendar.events',
-                'https://www.googleapis.com/auth/forms.body'],
+                'https://www.googleapis.com/auth/forms.body','https://www.googleapis.com/auth/forms.responses.readonly'],
+        redirect_uri='http://localhost:8080/'
+    )
+    
+    authorization_url, state = flow.authorization_url(
+        access_type='offline',
+        include_granted_scopes='true'
+    )
+
+    print(f"Authorization URL: {authorization_url}")
+
+    request.session['state'] = state
+    print(f"Generated state: {state}")
+    print(f"Session state set: {request.session.get('state')}")
+    
+    return redirect(authorization_url)
+
+def google_authenticate(request):
+    print("google_authenticate view called") 
+    flow = Flow.from_client_secrets_file(
+        os.path.join(settings.BASE_DIR, 'sos.json'),
+        scopes=['https://www.googleapis.com/auth/calendar.events',
+                'https://www.googleapis.com/auth/forms.body','https://www.googleapis.com/auth/forms.responses.readonly'],
         redirect_uri='http://127.0.0.1:8000/google/callback/'
     )
     
@@ -238,7 +263,7 @@ def google_authenticate(request):
 
     print(f"Authorization URL: {authorization_url}")
 
-    logging.info(f"Authorization URL: {authorization_url}")
+
     request.session['state'] = state
     print(f"Generated state: {state}")
     print(f"Session state set: {request.session.get('state')}")
@@ -253,16 +278,16 @@ def google_callback_view(request):
 
     flow = Flow.from_client_secrets_file(
         os.path.join(settings.BASE_DIR, 'sos.json'),
-        scopes=['https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/forms.body'],
+        scopes=['https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/forms.body', 'https://www.googleapis.com/auth/forms.responses.readonly'],
         state=returned_state,
-        redirect_uri='http://127.0.0.1:8000/google/callback/'
+        redirect_uri='http://localhost:8080/'
     )
     authorization_response = request.build_absolute_uri()
     
     try:
         flow.fetch_token(authorization_response=authorization_response)
         credentials = flow.credentials
-        request.session['credentials'] = {
+        credentials_data = {
             'token': credentials.token,
             'refresh_token': credentials.refresh_token,
             'token_uri': credentials.token_uri,
@@ -270,28 +295,25 @@ def google_callback_view(request):
             'client_secret': credentials.client_secret,
             'scopes': credentials.scopes
         }
-        print(f"Stored credentials: {request.session.get('credentials')}") 
-        print(f"Session ID in callback view: {request.session.session_key}")
-        print(f"Session data in callback view: {request.session.items()}")
-        
+        credentials_file = os.path.join(settings.BASE_DIR, 'credentials.json')
+        with open(credentials_file, 'w') as f:
+            json.dump(credentials_data, f)
+        print(f"Stored credentials in file: {credentials_file}")
         return redirect('create_and_schedule_interview')
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-     
-logger = logging.getLogger(__name__)
-
 
 def create_google_meet_link(request, interview):
-    print(f"Session ID in create view: {request.session.session_key}")
-    print(f"Session data in create link view: {request.session.items()}")
-    credentials = request.session.get('credentials')
-    print(f"Stored credentials: {credentials}")
-
-    if not credentials:
-        print("No credentials found in session. Redirecting to Google authentication.")
+    credentials_file = os.path.join(settings.BASE_DIR, 'credentials.json')
+    
+    if not os.path.exists(credentials_file):
+        print("Credentials file not found. Redirecting to Google authentication.")
         return redirect('google_authenticate')
 
-    creds = Credentials(**credentials)
+    with open(credentials_file, 'r') as f:
+        credentials_data = json.load(f)
+
+    creds = Credentials(**credentials_data)
     service = build('calendar', 'v3', credentials=creds)
 
     event = {
@@ -377,22 +399,22 @@ def create_and_schedule_interview(request):
         return JsonResponse({'status': 'error', 'message': 'Interviewer not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+        
 SCOPES = ['https://www.googleapis.com/auth/calendar.events',
-            'https://www.googleapis.com/auth/forms.body']
+            'https://www.googleapis.com/auth/forms.body','https://www.googleapis.com/auth/forms.responses.readonly']
 DISCOVERY_DOC = "https://forms.googleapis.com/$discovery/rest?version=v1"
 
 TOKEN_FILE = 'token.json' 
   
 def create_google_form():
     parser = argparse.ArgumentParser(parents=[tools.argparser])
-    flags = parser.parse_args([])  # Pass an empty list to avoid the conflict
+    flags = parser.parse_args([]) 
 
     store = file.Storage(TOKEN_FILE)
     creds = store.get()
     if not creds or creds.invalid:
-        flow = client.flow_from_clientsecrets(settings.GOOGLE_CLIENT_SECRETS_FILE, SCOPES , redirect_uri='http://127.0.0.1:8000/google/callback/')
-        creds = tools.run_flow(flow, store, flags)  # Pass the empty flags object
+        flow = client.flow_from_clientsecrets(settings.GOOGLE_CLIENT_SECRETS_FILE, SCOPES , redirect_uri='http://localhost:8080/')
+        creds = tools.run_flow(flow, store, flags) 
 
     form_service = discovery.build(
         "forms", "v1", http=creds.authorize(Http()), discoveryServiceUrl=DISCOVERY_DOC, static_discovery=False
@@ -433,10 +455,11 @@ def create_google_form():
     }
 
     result = form_service.forms().create(body=NEW_FORM).execute()
-    form_service.forms().batchUpdate(formId=result["formId"], body=NEW_QUESTION).execute()
+    form_id = result["formId"]
+    form_service.forms().batchUpdate(formId=form_id, body=NEW_QUESTION).execute()
 
-    form_url = f"https://docs.google.com/forms/d/{result['formId']}/viewform"
-    return form_url
+    form_url = f"https://docs.google.com/forms/d/{form_id}/viewform"
+    return  form_url , form_id
 
 def send_form_email(applicant_email, form_url):
     subject = "Your Interview Feedback Form"
@@ -444,3 +467,26 @@ def send_form_email(applicant_email, form_url):
     email_from = settings.EMAIL_HOST_USER
     recipient_list = [applicant_email]
     send_mail(subject, message, email_from, recipient_list)
+    
+def form_responses(request, form_id):
+
+    credentials_file = os.path.join(settings.BASE_DIR, 'credentials.json')
+    
+    if not os.path.exists(credentials_file):
+        return JsonResponse({'error': 'Credentials file not found. Please authenticate first.'}, status=400)
+    
+    with open(credentials_file, 'r') as f:
+        credentials_data = json.load(f)
+
+    creds = Credentials(**credentials_data)
+    
+    try:
+        service = build('forms', 'v1', credentials=creds)
+
+        response = service.forms().responses().list(formId=form_id).execute()
+
+        return JsonResponse(response)
+    
+    except HttpError as error:
+
+        return JsonResponse({'error': f'An error occurred: {error}'}, status=400)
