@@ -24,42 +24,34 @@ from django.contrib.auth.hashers import check_password
 
 
 
-@permission_classes([GETPermissions])     
-class User(APIView):  
-     def get(self,request):
+# @permission_classes([OnlyAdmin])
+class User(APIView):
+    def get(self,request):
           users = CustomUser.objects.all()
           serializer = UserSerializer(users, many=True)
           return Response(serializer.data)
-
-@csrf_exempt     
-@api_view(['POST'])
-def register(request):
-    validate_data = request.data
-    try:
-        user = {
-            'username': validate_data.get('username'),
-            'first_name': validate_data.get('first_name'),
-            'last_name': validate_data.get('last_name'),
-            'email': validate_data.get('email'),
-            'role_id': validate_data.get('role_id'),
-            'password': validate_data.get('password'),
-        }
-        user_serializer = UserSerializer(data=user)
-        if user_serializer.is_valid():
-            user_instance = user_serializer.save()
-            subject = 'Welcome to YourRecruitmentPortal!'
-            message = f'Thank you {user_instance.first_name} {user_instance.last_name} for registering with YourRecruitmentPortal. We look forward to build and grow together!'
-            sender_email = settings.EMAIL_HOST_USER
-            recipient_list = [user_instance.email]
-            send_mail(subject, message, sender_email, recipient_list)
-            return Response({"message": "User registered successfully", "success": True})
+    
+    def post(self,request):
+        validate_data = request.data
+        print('\n\n\n',validate_data,'\n\n\n')
+        role_object=Roles.objects.get(role_id=validate_data['role_id'])
+        user_data = {
+                'username': validate_data.get('username'),
+                'first_name': validate_data.get('first_name'),
+                'last_name': validate_data.get('last_name'),
+                'email': validate_data.get('email'),
+                'role_id': role_object
+            }
+        serializer=UserSerializer(data=validate_data)
+        if serializer.is_valid():
+            user = CustomUser.objects.create(**user_data)
+            user.set_password(validate_data.get('password'))
+            user.save()
+            return Response(
+                        {"message":"user applicant Registered Successfully", "success": True}
+                   )
         else:
-            return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    except IntegrityError as e:
-        if 'unique constraint' in str(e).lower() and 'email' in str(e).lower():
-            return Response({"message": "A user with this email already exists.", "success": False}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return Response({"message": "An error occurred while creating the user.", "success": False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+           return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
 
 
 @csrf_exempt
