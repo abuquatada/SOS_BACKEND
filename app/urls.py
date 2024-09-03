@@ -118,4 +118,6 @@ urlpatterns = [
     path('jobpostingcsv/',JobpostingCSV),
     path('google/forms/init/', GoogleFormsInitView.as_view(), name='google_forms_init'),
     path('google/forms/redirect/', GoogleFormsRedirectView.as_view(), name='google_forms_redirect'),
+    path('form-responses/<str:form_id>/', FormResponsesView.as_view(), name='form_responses'),
+
 ]
