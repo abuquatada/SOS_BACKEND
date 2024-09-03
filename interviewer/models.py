@@ -39,10 +39,16 @@ class InterviewQuestion(models.Model):
     phase=models.ForeignKey(InterviewPhase,on_delete=models.CASCADE)
     question_text=models.CharField(max_length=500)
     created_at=models.DateTimeField(auto_now_add=True)
-    updated_at=models.DateTimeField(auto_now_add=True)
+    updated_at=models.DateTimeField(auto_now=True)
 
+class Google_form(models.Model):
+    form_id=models.AutoField(primary_key=True)
+    google_form_id=models.CharField(max_length=255)
+    interview = models.ForeignKey(Interview,on_delete=models.CASCADE,related_name="feedback_form")
+    response_id =models.CharField(max_length=255)
 class Interview_feedback(models.Model):
     feedback_id =models.AutoField(primary_key=True)
     Interview = models.OneToOneField(Interview, on_delete=models.CASCADE)
     rating = models.IntegerField()
-    comments = models.CharField(max_length=100)     
+    comments = models.CharField(max_length=100) 
+    created_at = models.DateTimeField(auto_now_add=True)  
