@@ -1,4 +1,3 @@
-from django.test import TestCase
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
@@ -64,23 +63,20 @@ def create_google_meet_event():
 ##--------------------------------------------------Google Form-----------------------
 
 
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
 
 SCOPES_ = ['https://www.googleapis.com/auth/forms.body', 'https://www.googleapis.com/auth/forms.responses.readonly']
-credentials_json__='D:/SOS/sos_2phasepractice/project/interviewer/switchonsuccess-fc54002461e2.json'
-def get_google_forms_service():
+credentials_json__='D:/SOS/sos_2phasepractice/project/interviewer/service_creds.json'
+
+def create_google_form():
+    
     creds = service_account.Credentials.from_service_account_file(
         credentials_json__, scopes=SCOPES_)
     service = build('forms', 'v1', credentials=creds)
-    return service
-
-def create_google_form():
-    service = get_google_forms_service()
 
     NEW_FORM = {
         "info": {
             "title": "Interview Feedback Form",
+            "documentTitle":"Feedback",
         }
     }
 
@@ -108,8 +104,25 @@ def create_google_form():
                         },
                     },
                     "location": {"index": 0},
-                }
-            }
+                },
+            },
+               { "createItem": {
+                    "item": {
+                        "title": "Rating",
+                        "questionItem": {
+                            "question": {
+                                "required": True,
+                                "scaleQuestion": {
+                                        "low": 1,
+                                        "high": 10,
+                                        "lowLabel": "Worst",
+                                        "highLabel": "Excelent"
+                                },
+                            }
+                        },
+                    },
+                    "location": {"index": 1},
+                }}
         ]
     }
 
@@ -123,19 +136,18 @@ def create_google_form():
     print('\n\n\n',form_link,'\n\n\n')
 
 
-# create_google_form()
+create_google_form()
 
 
 def fetch_and_store_responses():
-    service = get_google_forms_service()
-    form_id="17ARO32JfmeTAJG4w27yetuD21oaooHpCK3FtO1pidaE"
-    response_id = "ACYDBNhc1F-n_Dp8dnaaEvf7UI4Yc17lPMkNPo9bngivfRZ8dp8PxnjTcbDqrDzDQ_77I2s"
-    # responses = service.forms().responses().list(formId=form_id).execute()
-    # responses = service.forms().responses().list(responseId=form_id).execute()
-    result = (service.forms().responses().get(formId=form_id, responseId=response_id).execute())
+    creds = service_account.Credentials.from_service_account_file(credentials_json__, scopes=SCOPES_)
+    service = build('forms', 'v1', credentials=creds)
+    form_id="1Nr5n1OBP4YFeOOpfNI-UasCqGymK9-WuELUYR-Bmpuo"
+    # response_id = "ACYDBNhc1F-n_Dp8dnaaEvf7UI4Yc17lPMkNPo9bngivfRZ8dp8PxnjTcbDqrDzDQ_77I2s"
+    result = service.forms().responses().list(formId=form_id).execute()
+    # result = (service.forms().responses().get(formId=form_id, responseId=response_id).execute())
     print('\n\n',result,'\n\n')
     for response in result.get('responses', []):
-        print('\n\n','None','\n\n')
         print('\n\n',response,'\n\n')
 
 fetch_and_store_responses()
