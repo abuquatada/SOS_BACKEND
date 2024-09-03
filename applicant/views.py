@@ -572,7 +572,7 @@ def get_applicant_details(request, pk):
 def get_applicant(request,pk=None):
     if request.method =="GET":
         role = str(request.user.role_id)
-        print('\n',role,'\n\n\n')
+        # print('\n',role,'\n\n\n')
         if role == 'Applicant':
             user_id = request.user.applicants.applicant_id
             print('\n\n\n',user_id,'\n\n\n')
