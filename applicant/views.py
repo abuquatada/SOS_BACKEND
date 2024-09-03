@@ -13,7 +13,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .filters import *
 from django.contrib.auth import authenticate, login, logout
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated , OR
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import authentication_classes, permission_classes
 from django.db import IntegrityError
@@ -23,10 +23,11 @@ from datetime import date
 from django.db.models import F
 from django.utils.dateparse import parse_datetime
 import csv
+from app.permissions import *
 
 @csrf_exempt
 @api_view(['POST'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminOrRecruiter])
 def complete_profile_applicant(request):
     if 'file' in request.FILES:
           csv_file = request.FILES['file']
@@ -234,7 +235,7 @@ def complete_profile_applicant(request):
 
 @csrf_exempt
 @api_view(['GET','PATCH', 'DELETE']) 
-# @permission_classes([IsAuthenticated])  
+@permission_classes([IsAuthenticated])  
 def applicant(request, pk=None):
     if request.method == 'GET':
         start_date_str = request.query_params.get('start_date')
@@ -318,7 +319,7 @@ def applicant(request, pk=None):
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated])
 def applicant_education(request, pk=None):
     if request.method == 'GET':
         if pk:
@@ -364,7 +365,7 @@ def applicant_education(request, pk=None):
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated])
 def applicant_experience(request, pk=None):
     if request.method == 'GET':
         if pk:
@@ -409,7 +410,7 @@ def applicant_experience(request, pk=None):
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated])
 def applicant_internship(request, pk=None):
     if request.method == 'GET':
         if pk:
@@ -456,7 +457,7 @@ def applicant_internship(request, pk=None):
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated])
 def applicant_certification(request, pk=None):
     if request.method == 'GET':
         if pk:
@@ -538,7 +539,7 @@ class FilterApplicant(generics.ListAPIView):
 
 @csrf_exempt
 @api_view(['POST'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminOrRecruiter])
 def SendEmailToSelectedApplicants( request):
         filter_criteria = request.data.get('filter_criteria', {})
         recruiter_email = request.data.get('recruiter_email', 'your@example.com')
@@ -557,6 +558,7 @@ def SendEmailToSelectedApplicants( request):
         return Response({"message": "Emails sent successfully."})
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminOrRecruiter])
 def get_applicant_details(request, pk):
     try:
         applicant = Applicants.objects.get(pk=pk)
@@ -568,6 +570,7 @@ def get_applicant_details(request, pk):
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated, OR(IsRecruiter, IsAdmin)])
 def get_applicant(request,pk=None):
     if pk:
         obj = Applicants.objects.get(pk=pk)
@@ -580,7 +583,7 @@ def get_applicant(request,pk=None):
     
 @csrf_exempt
 @api_view(['GET'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminOrRecruiter])
 def get_application(request, pk=None,recr_id=None,job_id=None):
     if request.method == 'GET':
         
@@ -614,7 +617,7 @@ def get_application(request, pk=None,recr_id=None,job_id=None):
 
 @csrf_exempt
 @api_view(['POST'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminOrRecruiter])
 def applicant_with_application(request):
     validate_data = request.data
     print('\n\n\n',validate_data,'\n\n\n')
@@ -740,6 +743,7 @@ def applicant_with_application(request):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminOrRecruiter])
 def applicantcount(request, pk=None):
     if 'gender_count' in request.query_params:
         gender_count = Applicants.objects.values('gender').annotate(count=Count('gender')).order_by('-count')

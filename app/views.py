@@ -66,7 +66,7 @@ def register(request):
 
 @csrf_exempt
 @api_view(['POST'])
-@permission_classes([AllowAny])
+# @permission_classes([AllowAny])
 def login_view(request):
     username = request.data.get('username')
     password = request.data.get('password')
@@ -220,8 +220,8 @@ class PasswordResetConfirmView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ChangePassword(APIView):
+    permission_classes = [IsAuthenticated]
     def post(self, request):
-        permission_classes = [IsAuthenticated]
         serializer = ChangePasswordSerializer(data=request.data)
         if serializer.is_valid():
             user = request.user
