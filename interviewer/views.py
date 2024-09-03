@@ -231,7 +231,7 @@ def google_authenticate(request):
         os.path.join(settings.BASE_DIR, 'sos.json'),
         scopes=['https://www.googleapis.com/auth/calendar.events',
                 'https://www.googleapis.com/auth/forms.body','https://www.googleapis.com/auth/forms.responses.readonly'],
-        redirect_uri='http://localhost:8080/'
+        redirect_uri='http://127.0.0.1:8000/google/callback/'
     )
     
     authorization_url, state = flow.authorization_url(
@@ -280,7 +280,7 @@ def google_callback_view(request):
         os.path.join(settings.BASE_DIR, 'sos.json'),
         scopes=['https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/forms.body', 'https://www.googleapis.com/auth/forms.responses.readonly'],
         state=returned_state,
-        redirect_uri='http://localhost:8080/'
+        redirect_uri='http://127.0.0.1:8000/google/callback/'
     )
     authorization_response = request.build_absolute_uri()
     
@@ -413,7 +413,7 @@ def create_google_form():
     store = file.Storage(TOKEN_FILE)
     creds = store.get()
     if not creds or creds.invalid:
-        flow = client.flow_from_clientsecrets(settings.GOOGLE_CLIENT_SECRETS_FILE, SCOPES , redirect_uri='http://localhost:8080/')
+        flow = client.flow_from_clientsecrets(settings.GOOGLE_CLIENT_SECRETS_FILE, SCOPES , redirect_uri='http://127.0.0.1:8000/google/callback/')
         creds = tools.run_flow(flow, store, flags) 
 
     form_service = discovery.build(
