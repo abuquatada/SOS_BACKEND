@@ -57,16 +57,85 @@ def create_google_meet_event():
         event = service.events().insert(calendarId='primary', body=event, conferenceDataVersion=1).execute()
         print(f"Meet link: {event['hangoutLink']}")
         return event['hangoutLink']
-        # store_meet_link_in_database(event['hangoutLink'])
     except Exception as e:
         print(f"An error occurred: {e}")
 
-def store_meet_link_in_database(meet_link):
-    print(f"Storing meet link in database: {meet_link}")
-    # Placeholder for database storage logic
-    # Example: Save the meet_link to your Django model
+
+##--------------------------------------------------Google Form-----------------------
 
 
-##-------------------------------------------------------------------------
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+
+SCOPES_ = ['https://www.googleapis.com/auth/forms.body', 'https://www.googleapis.com/auth/forms.responses.readonly']
+credentials_json__='D:/SOS/sos_2phasepractice/project/interviewer/switchonsuccess-fc54002461e2.json'
+def get_google_forms_service():
+    creds = service_account.Credentials.from_service_account_file(
+        credentials_json__, scopes=SCOPES_)
+    service = build('forms', 'v1', credentials=creds)
+    return service
+
+def create_google_form():
+    service = get_google_forms_service()
+
+    NEW_FORM = {
+        "info": {
+            "title": "Interview Feedback Form",
+        }
+    }
+
+    NEW_QUESTION = {
+        "requests": [
+            {
+                "createItem": {
+                    "item": {
+                        "title": "How satisfied were you with the interview process?",
+                        "questionItem": {
+                            "question": {
+                                "required": True,
+                                "choiceQuestion": {
+                                    "type": "RADIO",
+                                    "options": [
+                                        {"value": "Very Satisfied"},
+                                        {"value": "Satisfied"},
+                                        {"value": "Neutral"},
+                                        {"value": "Dissatisfied"},
+                                        {"value": "Very Dissatisfied"},
+                                    ],
+                                    "shuffle": True,
+                                },
+                            }
+                        },
+                    },
+                    "location": {"index": 0},
+                }
+            }
+        ]
+    }
+
+    result = service.forms().create(body=NEW_FORM).execute()
+    print('\n\n\n',result,'\n\n\n')
+    form_id = result['formId']
+    service.forms().batchUpdate(formId=form_id, body=NEW_QUESTION).execute()
+    
+    
+    form_link = f"https://docs.google.com/forms/d/{form_id}/viewform"
+    print('\n\n\n',form_link,'\n\n\n')
 
 
+# create_google_form()
+
+
+def fetch_and_store_responses():
+    service = get_google_forms_service()
+    form_id="17ARO32JfmeTAJG4w27yetuD21oaooHpCK3FtO1pidaE"
+    response_id = "ACYDBNhc1F-n_Dp8dnaaEvf7UI4Yc17lPMkNPo9bngivfRZ8dp8PxnjTcbDqrDzDQ_77I2s"
+    # responses = service.forms().responses().list(formId=form_id).execute()
+    # responses = service.forms().responses().list(responseId=form_id).execute()
+    result = (service.forms().responses().get(formId=form_id, responseId=response_id).execute())
+    print('\n\n',result,'\n\n')
+    for response in result.get('responses', []):
+        print('\n\n','None','\n\n')
+        print('\n\n',response,'\n\n')
+
+fetch_and_store_responses()
