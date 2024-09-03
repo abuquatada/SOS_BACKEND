@@ -15,8 +15,6 @@ from .meet import create_google_meet_event
 import logging
 import uuid
 import os
-import json
-from dotenv import load_dotenv
 from google_auth_oauthlib.flow import Flow
 from django.http import HttpResponseRedirect
 from rest_framework.views import APIView
@@ -412,13 +410,31 @@ def InterviewerCSV(request, format=None):
 
 #-----Google Form----
 
-logger = logging.getLogger(__name__)
-load_dotenv()
-client_secret_json_str = os.getenv('GOOGLE_CLIENT_SECRET_JSON')
-CLIENT_CONFIG = json.loads(client_secret_json_str)
 
-SCOPES = ['https://www.googleapis.com/auth/forms',
-           'https://www.googleapis.com/auth/forms.body']
+
+
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
+logger = logging.getLogger(__name__)
+
+CLIENT_CONFIG = {
+    "web": {
+        "project_id": "sosbackend-433608",
+        "client_id": "559904441123-01fsreo2bi6leet54cc5cijbr1lmen37.apps.googleusercontent.com",
+        "client_secret": "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",
+        "redirect_uris": ["http://127.0.0.1:8000/google/forms/redirect/"],
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    }
+}
+
+SCOPES = [
+    'https://www.googleapis.com/auth/forms',
+    'https://www.googleapis.com/auth/forms.body',
+    'https://www.googleapis.com/auth/forms.responses.readonly'
+
+]
 
 class GoogleFormsInitView(APIView):
     def get(self, request):
@@ -427,7 +443,7 @@ class GoogleFormsInitView(APIView):
             request.session['state'] = state
 
             flow = Flow.from_client_config(CLIENT_CONFIG, SCOPES)
-            flow.redirect_uri = "http://127.0.0.1:8000/google/forms/redirect/"
+            flow.redirect_uri = CLIENT_CONFIG['web']['redirect_uris'][0]
             authorization_url, _ = flow.authorization_url(state=state)
 
             return HttpResponseRedirect(authorization_url)
@@ -436,26 +452,56 @@ class GoogleFormsInitView(APIView):
             return JsonResponse({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+from google.oauth2.credentials import Credentials
+logger = logging.getLogger(__name__)
 class GoogleFormsRedirectView(APIView):
-    def set_session(self, request, credentials):
-        request.session['credentials'] = {
-            'token': credentials.token,
-            'refresh_token': credentials.refresh_token,
-            'token_uri': credentials.token_uri,
-            'client_id': credentials.client_id,
-            'client_secret': credentials.client_secret,
-            'scopes': credentials.scopes,
-        }
+    def get(self, request):
+        try:
+            flow = Flow.from_client_config(CLIENT_CONFIG, SCOPES)
+            flow.redirect_uri = CLIENT_CONFIG['web']['redirect_uris'][0]
+            authorization_response = request.build_absolute_uri()
+            flow.fetch_token(authorization_response=authorization_response)
+
+            credentials = flow.credentials
+            request.session['credentials'] = {
+                'token': credentials.token,
+                'refresh_token': credentials.refresh_token,
+                'token_uri': credentials.token_uri,
+                'client_id': credentials.client_id,
+                'client_secret': credentials.client_secret,
+                'scopes': credentials.scopes
+            }
+            service = build('forms', 'v1', credentials=credentials)
+            form_id = self.create_form(service)
+            form_url, updated_form_id = self.update_form(service, form_id)
+
+            return Response({'form_url': form_url, 'form_id': updated_form_id}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f'Error in GoogleFormsRedirectView: {str(e)}')
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def get_credentials_from_request(self, request):
+        credentials_data = request.session.get('credentials')
+        if not credentials_data:
+            return None
+        return Credentials(
+            token=credentials_data['token'],
+            refresh_token=credentials_data['refresh_token'],
+            token_uri=credentials_data['token_uri'],
+            client_id=credentials_data['client_id'],
+            client_secret=credentials_data['client_secret'],
+            scopes=credentials_data['scopes']
+        )
 
     def create_form(self, service):
         try:
             form = service.forms().create(body={
                 'info': {
-                    'title': 'Interview Feed Back Form',
+                    'title': 'Interview Feedback Form',
                 }
             }).execute()
-
-            form_id = form.get('formId', 'No Form ID')
+            form_id = form.get('formId')
+            logger.info(f'Form created with ID: {form_id}')
             return form_id
         except Exception as e:
             logger.error(f'Error in create_form: {str(e)}')
@@ -463,8 +509,7 @@ class GoogleFormsRedirectView(APIView):
 
     def update_form(self, service, form_id):
         try:
-            FormField = [
-                
+            form_fields = [
                 {
                     'createItem': {
                         'item': {
@@ -518,7 +563,7 @@ class GoogleFormsRedirectView(APIView):
                 {
                     'createItem': {
                         'item': {
-                            'title': 'Feed Back',
+                            'title': 'Feedback',
                             'questionItem': {
                                 'question': {
                                     'required': True,
@@ -533,74 +578,46 @@ class GoogleFormsRedirectView(APIView):
                 }
             ]
 
-            service.forms().batchUpdate(
-                formId=form_id,
-                body={'requests': FormField}
-            ).execute()
+            service.forms().batchUpdate(formId=form_id, body={'requests': form_fields}).execute()
+            form_url = f"https://docs.google.com/forms/d/{form_id}/viewform"
+            return form_url, form_id
 
         except Exception as e:
             logger.error(f'Error in update_form: {str(e)}')
             raise
 
-    def process_form(self, credentials):
+class FormResponsesView(APIView):
+    def get(self, request, form_id):
         try:
+            credentials = self.get_credentials_from_request(request)
             service = build('forms', 'v1', credentials=credentials)
-            form_id = self.create_form(service)
-            self.update_form(service, form_id)
-
-
-            form_url = f"https://docs.google.com/forms/d/{form_id}/edit"
-            return form_url
+            responses = self.get_form_responses(service, form_id)
+            return Response({'responses': responses}, status=status.HTTP_200_OK)
         except Exception as e:
-            logger.error(f'Error in process_form: {str(e)}')
-            return None
+            logger.error(f'Error in FormResponsesView: {str(e)}')
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    def get_responses(self, service, form_id):
+    def get_credentials_from_request(self, request):
+        credentials_data = request.session.get('credentials')
+        return Credentials(
+            token=credentials_data['token'],
+            refresh_token=credentials_data['refresh_token'],
+            token_uri=credentials_data['token_uri'],
+            client_id=credentials_data['client_id'],
+            client_secret=credentials_data['client_secret'],
+            scopes=credentials_data['scopes']
+        )
+
+    def get_form_responses(self, service, form_id):
         try:
             responses = service.forms().responses().list(formId=form_id).execute()
-            return responses.get('responses', [])
+            print('\n\n\n',responses,'\n\n\n')
+            responses_data = responses.get('responses', [])
+            logger.info(f'Fetched {len(responses_data)} responses for Form ID: {form_id}')
+            return responses_data
         except Exception as e:
-            logger.error(f'Error fetching form responses: {str(e)}')
-            return []
-
-    def print_responses(self, responses):
-        for response in responses:
-            logger.info(f"Response: {response}")
-            # print(f"Response: {response}")
-
-    def get(self, request):
-        try:
-            state = request.session.get('state')
-
-            if not state:
-                return JsonResponse({"error": "Missing state"}, status=400)
-
-            flow = Flow.from_client_config(CLIENT_CONFIG, SCOPES)
-            flow.redirect_uri = "http://127.0.0.1:8000/google/forms/redirect/"
-            flow.fetch_token(authorization_response=request.build_absolute_uri())
-
-            credentials = flow.credentials
-            self.set_session(request, credentials)
-
-            form_url = self.process_form(credentials)
-
-            if form_url:
-
-                service = build('forms', 'v1', credentials=credentials)
-                form_id = form_url.split('/d/')[1].split('/')[0]
-                responses = self.get_responses(service, form_id)
-                
-
-                return HttpResponseRedirect(form_url)
-            else:
-                return JsonResponse({"error": "Failed to create or update form"}, status=500)
-
-        except Exception as e:
-            logger.error(f'Error in GoogleFormsRedirectView: {str(e)}')
-            return JsonResponse({"error": str(e)}, status=500)
-
-
-
+            logger.error(f'Error in get_form_responses: {str(e)}')
+            raise
 
 
 
