@@ -24,38 +24,34 @@ from django.contrib.auth.hashers import check_password
 
 
 
-# @permission_classes([GETPermissions])     
-class User(APIView):  
-     def get(self,request):
+# @permission_classes([OnlyAdmin])
+class User(APIView):
+    def get(self,request):
           users = CustomUser.objects.all()
           serializer = UserSerializer(users, many=True)
           return Response(serializer.data)
-
-@csrf_exempt     
-@api_view(['POST'])
-def register(request):
-    validate_data = request.data
-    role_object=Roles.objects.get(role_id=validate_data['role_id'])
-    try:
-
-        user = {
-            'username': validate_data.get('username'),
-            'first_name': validate_data.get('first_name'),
-            'last_name': validate_data.get('last_name'),
-            'email': validate_data.get('email'),
-            'role_id': role_object,
-        }
-        
-        user_serializer = UserSerializer(data=validate_data)
-        if user_serializer.is_valid():
-            user = CustomUser.objects.create(**user)
-            user.set_password(validate_data['password'])
+    
+    def post(self,request):
+        validate_data = request.data
+        print('\n\n\n',validate_data,'\n\n\n')
+        role_object=Roles.objects.get(role_id=validate_data['role_id'])
+        user_data = {
+                'username': validate_data.get('username'),
+                'first_name': validate_data.get('first_name'),
+                'last_name': validate_data.get('last_name'),
+                'email': validate_data.get('email'),
+                'role_id': role_object
+            }
+        serializer=UserSerializer(data=validate_data)
+        if serializer.is_valid():
+            user = CustomUser.objects.create(**user_data)
+            user.set_password(validate_data.get('password'))
             user.save()
-            return Response({"message": "User registered successfully", "success": True})
+            return Response(
+                        {"message":"user applicant Registered Successfully", "success": True}
+                   )
         else:
-            return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    except IntegrityError as e:
-            return Response({"message": str(e), "success": False}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+           return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
 
 
 @csrf_exempt

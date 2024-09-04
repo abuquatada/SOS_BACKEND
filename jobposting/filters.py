@@ -36,7 +36,7 @@ class DepartmentFilter(django_filters.FilterSet):
 
 
 class CompanyFilter(django_filters.FilterSet):
-    Industry = django_filters.NumberFilter(field_name='Industry')
+    industry = django_filters.NumberFilter(field_name='industry')
 
     class Meta:
         model = Company
