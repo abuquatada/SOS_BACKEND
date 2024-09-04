@@ -67,7 +67,8 @@ def create_google_meet_event():
 SCOPES_ = ['https://www.googleapis.com/auth/forms.body', 'https://www.googleapis.com/auth/forms.responses.readonly']
 credentials_json__='D:/SOS/sos_2phasepractice/project/interviewer/service_creds.json'
 
-def create_google_form():
+def google_form(interview_data):
+    print('\n\n\n',f'data {interview_data["applicant_name"]}','\n\n\n')
     
     creds = service_account.Credentials.from_service_account_file(
         credentials_json__, scopes=SCOPES_)
@@ -75,11 +76,10 @@ def create_google_form():
 
     NEW_FORM = {
         "info": {
-            "title": "Interview Feedback Form",
+            "title": f"Interview Feedback Form - {interview_data["applicant_name"]}",
             "documentTitle":"Feedback",
         }
     }
-
     NEW_QUESTION = {
         "requests": [
             {
@@ -129,25 +129,21 @@ def create_google_form():
     result = service.forms().create(body=NEW_FORM).execute()
     print('\n\n\n',result,'\n\n\n')
     form_id = result['formId']
+    # print('\n\n\n',r,'\n\n\n')
     service.forms().batchUpdate(formId=form_id, body=NEW_QUESTION).execute()
-    
-    
-    form_link = f"https://docs.google.com/forms/d/{form_id}/viewform"
-    print('\n\n\n',form_link,'\n\n\n')
+    return result
 
 
-create_google_form()
 
-
-def fetch_and_store_responses():
+def fetch_and_store_responses(google_form_id):
     creds = service_account.Credentials.from_service_account_file(credentials_json__, scopes=SCOPES_)
     service = build('forms', 'v1', credentials=creds)
-    form_id="1Nr5n1OBP4YFeOOpfNI-UasCqGymK9-WuELUYR-Bmpuo"
+    form_id=google_form_id
     # response_id = "ACYDBNhc1F-n_Dp8dnaaEvf7UI4Yc17lPMkNPo9bngivfRZ8dp8PxnjTcbDqrDzDQ_77I2s"
     result = service.forms().responses().list(formId=form_id).execute()
     # result = (service.forms().responses().get(formId=form_id, responseId=response_id).execute())
     print('\n\n',result,'\n\n')
     for response in result.get('responses', []):
         print('\n\n',response,'\n\n')
-
-fetch_and_store_responses()
+        return response
+# fetch_and_store_responses()

@@ -11,7 +11,7 @@ import csv
 from datetime import datetime
 from django.core.mail import send_mail
 from django.conf import  settings
-from .meet import create_google_meet_event
+from .meet import *
 
 
 
@@ -109,8 +109,27 @@ def InterviewView(request,pk=None):
         elif pk is not None:
             try:
                 interview_obj=Interview.objects.get(pk=pk)
-                serializers=InterviewSerializer(interview_obj)
-                return Response(serializers.data)
+                serializers=InterviewSerializer(interview_obj).data
+                print(f'\n\n\n{serializers}\n\n\n')
+                if len(serializers['feedback']) == 0:
+                    print('Data no available')
+                    form_obj = Google_form.objects.get(interview=serializers['interview_id'])
+                    form_serializer = Google_formSerializer(form_obj).data
+                    fetch_response= fetch_and_store_responses(form_serializer['google_form_id'])
+                    print(f'\n\n\nForm obj {fetch_response}\n\n\n')
+                    for data in fetch_response['answers']['54c7d7f5']['textAnswers']['answers']['value']:
+                        for key, value in data['answers'].items():
+                                question_id = value['questionId']
+                                value = value['textAnswers']['answers'][0]['value']
+                        print(f'This is answers - {data}')
+                        # for i in fetch_response['answers'][data]:
+                        #     print(f'This is {i}')
+                        #     for j in fetch_response['answers'][data][i[1]]:
+                        #         print(f'This is j - {j}')
+                    return None
+                else:
+                    print(f'\n\n\n{serializers['feedback']}\n\n\n')    
+                    return Response(serializers)
             except:
                 return Response(status=status.HTTP_404_NOT_FOUND)
         else:
@@ -127,40 +146,51 @@ def InterviewView(request,pk=None):
         application_obj = Application.objects.get(application_id=interview_obj['application_id'])
         interviewer_obj = Interviewer.objects.get(interviewer_id=interview_obj['interviewer'])
         phase_obj = InterviewPhase.objects.get(phase_id=interview_obj['phase'])
-        google_meet_link=create_google_meet_event()
         
         scheduled_date = datetime.strptime(interview_obj['scheduled_date'], "%Y-%m-%d %I:%M %p")
-        # iso_scheduled_date = scheduled_date.isoformat() + 'Z'
-        print('\n\n\n',scheduled_date,'\n\n\n')
-        # print('\n\n\n',iso_scheduled_date,'\n\n\n')
+        print('\n\n\n',f'schedule date and time{scheduled_date}','\n\n\n')
         iso_scheduled_date = scheduled_date.isoformat() + 'Z'
-
-        # Update the interview_obj with ISO formatted date
         interview_obj['scheduled_date'] = iso_scheduled_date
+        
         serializers=InterviewSerializer(data=interview_obj)
         if serializers.is_valid():
             if interview_obj['type'] == 'Virtual':
-                obj_interview = Interview.objects.create(
-                                                        type=interview_obj["type"],
-                                                        scheduled_date=scheduled_date, 
-                                                        virtual_link=google_meet_link,
-                                                        notes=interview_obj["notes"],
-                                                        application_id=application_obj,
-                                                         phase=phase_obj,
-                                                         interviewer=interviewer_obj,
-                                                         )
+                google_meet_link=create_google_meet_event()
+                obj_interview = Interview.objects.create(type=interview_obj["type"],
+                                                            scheduled_date=scheduled_date, 
+                                                            notes=interview_obj["notes"],
+                                                            application_id=application_obj,
+                                                            phase=phase_obj,
+                                                            interviewer=interviewer_obj,
+                                                            virtual_link=google_meet_link
+                                                             )
             else:    
-                obj_interview = Interview.objects.create(
-                                                        type=interview_obj["type"],
-                                                        scheduled_date=scheduled_date, 
-                                                        location=interview_obj["location"],
-                                                        notes=interview_obj["notes"],
-                                                         application_id=application_obj,
-                                                          phase=phase_obj,
-                                                          interviewer=interviewer_obj,
-                                                         )
-            
+                obj_interview = Interview.objects.create(type=interview_obj["type"],
+                                                            scheduled_date=scheduled_date, 
+                                                            notes=interview_obj["notes"],
+                                                            application_id=application_obj,
+                                                            phase=phase_obj,
+                                                            location=interview_obj['location'],
+                                                            interviewer=interviewer_obj,
+                                                             )
+                
             obj_interview.save()
+            
+            
+            print(f'this is interview{obj_interview.interview_id}','\n\n\n')
+            interview_data = {
+                "applicant_name":obj_interview.application_id.applicant_id.id.first_name
+            }
+            
+            feedback_form = google_form(interview_data)
+            print('\n\n\n',f'feedback data {feedback_form}','\n\n\n')
+            
+            feedback_obj = Google_form.objects.create(
+                                            google_form_id=feedback_form['formId'],
+                                            interview=obj_interview,
+                                            feedback_url=feedback_form['responderUri'])
+            feedback_obj.save() 
+            
             applicant_user = Application.objects.get(application_id=interview_obj['application_id'])
             applicant_email = applicant_user.applicant_id.id.email
             applicant_name = applicant_user.applicant_id.id.first_name
@@ -187,7 +217,8 @@ def InterviewView(request,pk=None):
             message_interviewer = (
             f'Dear {interviewer_firstname},\n\n'
             f'Please review the candidate\'s  resume and prepare any questions you may have. If the interview is virtual, the meeting link is attached below.\n\n'
-            'Best regards,\n'
+            'Best regards,\n\n'
+            f'Please provide the interview feedback on this url{subject_applicant}'
 
             )
             send_mail(subject_interviewer, message_interviewer, settings.EMAIL_HOST_USER, [interviewer_email])
@@ -406,149 +437,3 @@ def InterviewerCSV(request, format=None):
 
     return Response('Interviewers added successfully', status=status.HTTP_201_CREATED)        
 
-
-
-
-
-#-----------GOOGLE MEET CODE--------------------
-# from rest_framework import exceptions
-# import logging
-# import uuid
-# from django.core.mail import send_mail
-# from django.conf import  settings
-# import csv
-# from datetime import datetime
-# from google_auth_oauthlib.flow import Flow
-# from googleapiclient.discovery import build
-# import os
-# from django.http import HttpResponseRedirect
-# from rest_framework.views import APIView
-
-# OAUTHLIB_INSECURE_TRANSPORT= 1
-
-# CLIENT_CONFIG = {
-#     "web": {
-#     "client_id": "630519295088-juf629tr6av6brod4hmuaj9mb6u19jqr.apps.googleusercontent.com",
-#         "redirect_uris": ["http://127.0.0.1:8000/google/calendar/redirect/"],
-#     "project_id": "switchonsuccess",
-#     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-#     "token_uri": "https://oauth2.googleapis.com/token",
-#     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-#     "client_secret": "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"
-#   }
-# }
-# SCOPES = [
-#     'https://www.googleapis.com/auth/calendar.events',
-#     'https://www.googleapis.com/auth/calendar'
-# ]
-
-# logger = logging.getLogger(__name__)
-
-# class GoogleCalendarInitView(APIView):
-#     def get(self, request):
-#         try:
-#             interview_id = request.query_params.get('interview_id')
-#             date_str = request.query_params.get('scheduled_date')
-
-#             if not interview_id or not date_str:
-#                 return Response({"error": "Missing interview_id or scheduled_date"}, status=status.HTTP_400_BAD_REQUEST)
-
-#             try:
-#                 scheduled_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-#             except ValueError:
-#                 return Response({"error": "Invalid date format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
-
-#             state = str(uuid.uuid4())
-#             request.session['state'] = state
-#             request.session['interview_id'] = interview_id
-#             request.session['scheduled_date'] = scheduled_date.isoformat()
-
-#             flow = Flow.from_client_config(CLIENT_CONFIG, SCOPES)
-#             flow.redirect_uri = "http://127.0.0.1:8000/google/calendar/redirect/"
-#             authorization_url, _ = flow.authorization_url(state=state)
-
-#             return HttpResponseRedirect(authorization_url)
-#         except Exception as e:
-#             logger.error(f'Error in GoogleCalendarInitView: {str(e)}')
-#             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# class GoogleCalendarRedirectView(APIView):
-#     def set_session(self, request, credentials):
-#         request.session['credentials'] = {
-#             'token': credentials.token,
-#             'refresh_token': credentials.refresh_token,
-#             'token_uri': credentials.token_uri,
-#             'client_id': credentials.client_id,
-#             'client_secret': credentials.client_secret,
-#             'scopes': credentials.scopes,
-#         }
-
-#     def process_events(self, credentials, interview_id, scheduled_date):
-#         try:
-#             service = build('calendar', 'v3', credentials=credentials)
-
-#             event = {
-#                 'summary': 'Google Meet with Team',
-#                 'description': 'A Google Meet to discuss project details.',
-#                 'start': {
-#                     'dateTime': f'{scheduled_date}T10:00:00-07:00',
-#                     'timeZone': 'America/Los_Angeles',
-#                 },
-#                 'end': {
-#                     'dateTime': f'{scheduled_date}T11:00:00-07:00',
-#                     'timeZone': 'America/Los_Angeles',
-#                 },
-#                 'conferenceData': {
-#                     'createRequest': {
-#                         'requestId': str(uuid.uuid4()),
-#                         'conferenceSolutionKey': {'type': 'hangoutsMeet'}
-#                     }
-#                 },
-#                 'attendees': [{'email': 'example@example.com'}],
-#                 'reminders': {
-#                     'useDefault': False,
-#                     'overrides': [{'method': 'email', 'minutes': 24 * 60}, {'method': 'popup', 'minutes': 10}],
-#                 },
-#             }
-
-#             created_event = service.events().insert(
-#                 calendarId='primary',
-#                 body=event,
-#                 conferenceDataVersion=1
-#             ).execute()
-
-#             meet_link = created_event.get('hangoutLink', 'No Meet Link')
-
-#             from .models import Interview
-#             try:
-#                 interview = Interview.objects.get(interview_id=interview_id)
-#                 interview.virtual_link = meet_link
-#                 interview.save()
-#             except Interview.DoesNotExist:
-#                 return Response({"error": "Interview not found"}, status=status.HTTP_404_NOT_FOUND)
-
-#             return Response({'message': 'Event created', 'meet_link': meet_link, "scheduled_date": scheduled_date})
-#         except Exception as e:
-#             logger.error(f'Error in process_events: {str(e)}')
-#             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-#     def get(self, request):
-#         try:
-#             state = request.session.get('state')
-#             interview_id = request.session.get('interview_id')
-#             scheduled_date = request.session.get('scheduled_date')
-
-#             if not state or not interview_id or not scheduled_date:
-#                 return Response({"error": "Missing state, interview_id, or scheduled_date"}, status=status.HTTP_400_BAD_REQUEST)
-
-#             flow = Flow.from_client_config(CLIENT_CONFIG, SCOPES)
-#             flow.redirect_uri = "http://127.0.0.1:8000/google/calendar/redirect/"
-#             flow.fetch_token(authorization_response=request.build_absolute_uri())
-
-#             credentials = flow.credentials
-#             self.set_session(request, credentials)
-
-#             return self.process_events(credentials, interview_id, scheduled_date)
-#         except Exception as e:
-#             logger.error(f'Error in GoogleCalendarRedirectView: {str(e)}')
-#             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

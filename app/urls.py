@@ -14,7 +14,6 @@ from rest_framework_simplejwt.views import TokenVerifyView
 
 urlpatterns = [
     path('users/',User.as_view()),
-    path('register/',register),
     path('login/', login_view),
     path('logout/',Logout.as_view()),
     path('passwordreset_request/',PasswordResetRequestView.as_view()),
