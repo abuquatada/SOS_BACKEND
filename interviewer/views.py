@@ -12,6 +12,14 @@ from datetime import datetime
 from django.core.mail import send_mail
 from django.conf import  settings
 from .meet import *
+import logging
+import uuid
+import os
+from google_auth_oauthlib.flow import Flow
+from django.http import HttpResponseRedirect
+from rest_framework.views import APIView
+from django.http import JsonResponse
+from googleapiclient.discovery import build
 
 
 
@@ -250,11 +258,13 @@ class FilterInterviewer(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend]
     filterset_class=InterviewerFilter
 
+
 class FilterInterview(generics.ListAPIView):
     queryset=Interview.objects.all()
     serializer_class=InterviewSerializer
     filter_backends=[DjangoFilterBackend]
     filterset_class=InterviewFilter
+
     
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
 def InterviewPhaseView(request, pk=None):
@@ -435,5 +445,9 @@ def InterviewerCSV(request, format=None):
     except Exception as e:
         return Response(f"Error processing CSV: {e}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    return Response('Interviewers added successfully', status=status.HTTP_201_CREATED)        
+    return Response('Interviewers added successfully', status=status.HTTP_201_CREATED)  
+
+
+
+
 

@@ -560,6 +560,7 @@ def SendEmailToSelectedApplicants( request):
 def get_applicant_details(request, pk):
     try:
         applicant = Applicants.objects.get(pk=pk)
+        
     except Applicants.DoesNotExist:
         return Response({'error': 'Applicant not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -569,18 +570,30 @@ def get_applicant_details(request, pk):
 
 @api_view(['GET'])
 def get_applicant(request,pk=None):
-    if pk:
-        obj = Applicants.objects.get(pk=pk)
-        serializers = Applicant_custom(obj)
-        return Response(serializers.data)
-    else:
-        obj = Applicants.objects.all()
-        serializers = Applicant_custom(obj,many=True)
-        return Response(serializers.data)
+    if request.method =="GET":
+        role = str(request.user.role_id)
+        # print('\n',role,'\n\n\n')
+        if role == 'Applicant':
+            user_id = request.user.applicants.applicant_id
+            print('\n\n\n',user_id,'\n\n\n')
+            try:
+              profile = Applicants.objects.get(pk=user_id)
+              serializer =Applicant_custom(profile)
+              return Response(serializer.data)
+            except Applicants.DoesNotExist:
+                 return Response(status=status.HTTP_404_NOT_FOUND)
+        else:
+            try:
+               profile = Applicants.objects.get(pk=pk)
+               serializer =Applicant_custom(profile)
+               return Response(serializer.data)
+            except Applicants.DoesNotExist:
+                return Response(status=status.HTTP_404_NOT_FOUND)
+
     
 @csrf_exempt
 @api_view(['GET'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated])
 def get_application(request, pk=None,recr_id=None,job_id=None):
     if request.method == 'GET':
         

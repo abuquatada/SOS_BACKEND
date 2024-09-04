@@ -40,3 +40,4 @@ class InterviewFilter(django_filters.FilterSet):
     class Meta:
         model = Interview
         fields = ['application_id', 'phase_name', 'type', 'scheduled_date','interviewer_id','location','status','interviewer_first_name','interviewer_last_name']
+
