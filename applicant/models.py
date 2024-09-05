@@ -57,9 +57,7 @@ class ApplicantInternship(models.Model):
     company_name = models.CharField(max_length=100)
     position_title = models.CharField(max_length=50)
     start_date = models.DateField(null=True)
-    # start_year = models.IntegerField()
     end_date = models.DateField(null=True)
-    # end_year = models.IntegerField()
     project_name = models.CharField(max_length=100)
     description = models.TextField()
     internship_certificate = models.FileField(upload_to="media/applicant_internship",null=True, blank=True)
@@ -76,3 +74,19 @@ class ApplicantCertification(models.Model):
     
     def __str__(self):
         return self.certification_name
+    
+
+
+
+class Applicant_Document(models.Model):
+    document_id=models.AutoField(primary_key=True)
+    applicant_id=models.ForeignKey(Applicants,on_delete=models.CASCADE)
+    job_id=models.ForeignKey(JobPosting,on_delete=models.CASCADE)
+    created_at=models.DateField(auto_now_add=True)
+    updated_at=models.DateField(auto_now=True)
+    document=models.FileField(null=True,blank=True)
+    verified=models.CharField(max_length=100, choices=[
+        ("pending","pending"),
+        ("unverified","unverified"),
+        ("verified","verified")
+    ],default="pending")
