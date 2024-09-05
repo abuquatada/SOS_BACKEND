@@ -782,3 +782,51 @@ def applicantcount(request, pk=None):
             age_group_counts[age_group] = count
         
         return Response(age_group_counts)
+    
+
+@api_view(['GET','POST','PATCH','DELETE'])
+def applicant_document(request,pk=None):
+     if request.method=='GET':
+         if pk is not None:
+               try:
+                   documentobj=Applicant_Document.objects.get(pk=pk)
+                   serializers=ApplicantDocumentSerializer(documentobj)
+                   return Response(serializers.data)
+               except:
+                   return Response('Applicant Documnet Not Found',status=status.HTTP_404_NOT_FOUND)
+         else:
+             documentobj=Applicant_Document.objects.all()
+             serializers=ApplicantDocumentSerializer(documentobj,many=True)
+             return Response(serializers.data)
+     elif request.method=='POST':
+             try:
+                documentobj=request.data
+             except:
+                 return Response(status=status.HTTP_404_NOT_FOUND)
+             serializers=ApplicantDocumentSerializer(data=documentobj)
+             if serializers.is_valid():
+                 serializers.save()
+                 return Response('Applicant Documnet Added',status=status.HTTP_200_OK)
+             return Response(serializers.errors,status=status.HTTP_404_NOT_FOUND)
+         
+     elif request.method=='PATCH':
+             try:
+                 documentobj=Applicant_Document.objects.get(pk=pk)
+             except:
+                 return Response(status=status.HTTP_404_NOT_FOUND)
+             serializers=ApplicantDocumentSerializer(documentobj,data=request.data,partial=True)
+             if serializers.is_valid():
+                 serializers.save()
+                 return Response("Applicant Documnet Updated",status=status.HTTP_200_OK)
+             return Response(serializers.errors,status=status.HTTP_404_NOT_FOUND)
+     elif request.method=='DELETE':
+         try:
+             documentobj=Applicant_Document.objects.get(pk=pk)
+         except:
+             return Response (status=status.HTTP_404_NOT_FOUND)
+         documentobj.delete()
+         return Response("Deleted Successfully",status=status.HTTP_200_OK)
+                 
+                   
+
+
