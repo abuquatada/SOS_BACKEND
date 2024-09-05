@@ -76,3 +76,19 @@ class ApplicantCertification(models.Model):
     
     def __str__(self):
         return self.certification_name
+    
+
+
+
+class Applicant_Document(models.Model):
+    document_id=models.AutoField(primary_key=True)
+    applicant_id=models.ForeignKey(Applicants,on_delete=models.CASCADE)
+    job_id=models.ForeignKey(JobPosting,on_delete=models.CASCADE)
+    created_at=models.DateField(auto_now_add=True)
+    updated_at=models.DateField(auto_now_add=True)
+    document=models.FileField(null=True,blank=True)
+    verified=models.CharField(max_length=100, choices=[
+        ("pending","pending"),
+        ("unverified","unverified"),
+        ("verified","verified")
+    ],default="pending")

@@ -118,5 +118,11 @@ class Applicant_custom(serializers.ModelSerializer):
         return ApplicantCertificationSerializer(certification, many=True).data
     
 
+class ApplicantDocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Applicant_Document
+        fields='__all__'
+
+
 
 
