@@ -47,6 +47,10 @@ class Google_form(models.Model):
     interview = models.ForeignKey(Interview,on_delete=models.CASCADE,related_name="feedback_form")
     feedback_url = models.URLField(null=True)
     response_id =models.CharField(max_length=255,null=True)
+    status_question_id=models.CharField(max_length=255,null=True)
+    rating_question_id=models.CharField(max_length=255,null=True)
+    comments_question_id=models.CharField(max_length=255,null=True)
+    
     
 class Interview_feedback(models.Model):
     feedback_id =models.AutoField(primary_key=True)

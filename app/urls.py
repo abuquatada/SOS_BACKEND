@@ -106,7 +106,7 @@ urlpatterns = [
     path('interview/',InterviewView),
     path('interview/<int:pk>/',InterviewView),
     path('filter-interviewer/',FilterInterviewer.as_view()),
-    path('filter-interview/',InterviewListView.as_view()),
+    # path('filter-interview/',InterviewListView.as_view()),
     path('interviewphase/',InterviewPhaseView),
     path('interviewphase/<int:pk>/',InterviewPhaseView),
     path('interviewquestions/',InterviewQuestionView),
@@ -114,9 +114,6 @@ urlpatterns = [
     path('filter-interview-questions/',FilterInterviewQuestion.as_view()),
     path('feedback/', Interview_Feedback_View),
     path('feedback/<int:pk>/', Interview_Feedback_View),
-    path('jobpostingcsv/',JobpostingCSV),
-    path('google/forms/init/', GoogleFormsInitView.as_view(), name='google_forms_init'),
-    path('google/forms/redirect/', GoogleFormsRedirectView.as_view(), name='google_forms_redirect'),
-    path('form-responses/<str:form_id>/', FormResponsesView.as_view(), name='form_responses'),
+    path('jobpostingcsv/',JobpostingCSV)
 
 ]
