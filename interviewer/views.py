@@ -11,7 +11,7 @@ import csv
 from datetime import datetime
 from django.core.mail import send_mail
 from django.conf import  settings
-from .meet import create_google_meet_event
+from .meet import *
 import logging
 import uuid
 import os
@@ -115,12 +115,40 @@ def InterviewView(request,pk=None):
                 return Response(status=status.HTTP_404_NOT_FOUND)
             
         elif pk is not None:
-            try:
+            # try:
                 interview_obj=Interview.objects.get(pk=pk)
-                serializers=InterviewSerializer(interview_obj)
-                return Response(serializers.data)
-            except:
-                return Response(status=status.HTTP_404_NOT_FOUND)
+                serializers=InterviewSerializer(interview_obj).data
+                if len(serializers['feedback']) == 0:
+                    try:
+                        form_obj = Google_form.objects.get(interview=serializers['interview_id'])
+                        status_id = form_obj.status_question_id
+                        rating_id = form_obj.rating_question_id
+                        comment_id = form_obj.comments_question_id
+                        form_serializer = Google_formSerializer(form_obj).data
+                        fetch_response= fetch_and_store_responses(form_serializer['google_form_id'])
+                        for key, value in fetch_response['answers'].items():
+                            if status_id == value['questionId']:
+                                sta = value['textAnswers']['answers'][0]['value']
+                                interview_obj_ = Interview.objects.filter(interview_id=interview_obj.interview_id).update(status=sta)
+                            if rating_id == value['questionId']:
+                                rating_value__ = value['textAnswers']['answers'][0]['value']
+                            if comment_id == value['questionId']:
+                                comment_value__ = value['textAnswers']['answers'][0]['value']
+                        print(f'Rating {rating_value__}')                
+                        print(f'Comment {comment_value__}')                
+                        inv_feedback_obj = Interview_feedback.objects.create(
+                            Interview=interview_obj,
+                            rating=rating_value__,
+                            comments=comment_value__
+                        )  
+                        inv_feedback_obj.save()      
+                        return Response(serializers)
+                    except:
+                        return Response(serializers)    
+                else:  
+                    return Response(serializers)
+            # except:
+            #     return Response(status=status.HTTP_404_NOT_FOUND)
         else:
             interview_obj=Interview.objects.all()
             serializers=InterviewSerializer(interview_obj,many=True)
@@ -135,40 +163,60 @@ def InterviewView(request,pk=None):
         application_obj = Application.objects.get(application_id=interview_obj['application_id'])
         interviewer_obj = Interviewer.objects.get(interviewer_id=interview_obj['interviewer'])
         phase_obj = InterviewPhase.objects.get(phase_id=interview_obj['phase'])
-        google_meet_link=create_google_meet_event()
         
         scheduled_date = datetime.strptime(interview_obj['scheduled_date'], "%Y-%m-%d %I:%M %p")
-        # iso_scheduled_date = scheduled_date.isoformat() + 'Z'
-        print('\n\n\n',scheduled_date,'\n\n\n')
-        # print('\n\n\n',iso_scheduled_date,'\n\n\n')
+        print('\n\n\n',f'schedule date and time{scheduled_date}','\n\n\n')
         iso_scheduled_date = scheduled_date.isoformat() + 'Z'
-
-        # Update the interview_obj with ISO formatted date
         interview_obj['scheduled_date'] = iso_scheduled_date
+        
         serializers=InterviewSerializer(data=interview_obj)
         if serializers.is_valid():
             if interview_obj['type'] == 'Virtual':
+                google_meet_link=create_google_meet_event()
                 obj_interview = Interview.objects.create(
-                                                        type=interview_obj["type"],
-                                                        scheduled_date=scheduled_date, 
-                                                        virtual_link=google_meet_link,
-                                                        notes=interview_obj["notes"],
-                                                        application_id=application_obj,
-                                                         phase=phase_obj,
-                                                         interviewer=interviewer_obj,
-                                                         )
+                                                            type=interview_obj["type"],
+                                                            scheduled_date=scheduled_date, 
+                                                            notes=interview_obj["notes"],
+                                                            application_id=application_obj,
+                                                            phase=phase_obj,
+                                                            interviewer=interviewer_obj,
+                                                            virtual_link=google_meet_link
+                                                             )
             else:    
-                obj_interview = Interview.objects.create(
-                                                        type=interview_obj["type"],
-                                                        scheduled_date=scheduled_date, 
-                                                        location=interview_obj["location"],
-                                                        notes=interview_obj["notes"],
-                                                         application_id=application_obj,
-                                                          phase=phase_obj,
-                                                          interviewer=interviewer_obj,
-                                                         )
-            
+                obj_interview = Interview.objects.create(type=interview_obj["type"],
+                                                            scheduled_date=scheduled_date, 
+                                                            notes=interview_obj["notes"],
+                                                            application_id=application_obj,
+                                                            phase=phase_obj,
+                                                            location=interview_obj['location'],
+                                                            interviewer=interviewer_obj,
+                                                             )
+                
             obj_interview.save()
+            
+            
+            print(f'this is interview{obj_interview.interview_id}','\n\n\n')
+            interview_data = {
+                "applicant_name":obj_interview.application_id.applicant_id.id.first_name
+            }
+            question_data=[]
+            feedback_form = google_form(interview_data)
+            print('\n\n\n',f'feedback data {feedback_form}','\n\n\n')
+            for i in feedback_form[1]['replies']:
+                d = i['createItem']['questionId']
+                question_data.extend(d)
+                
+            print(question_data)
+            feedback_obj = Google_form.objects.create(
+                                            google_form_id=feedback_form[0]['formId'],
+                                            interview=obj_interview,
+                                            feedback_url=feedback_form[0]['responderUri'],
+                                            status_question_id=question_data[0],
+                                            rating_question_id=question_data[1],
+                                            comments_question_id=question_data[2],
+                                            )
+            feedback_obj.save() 
+            
             applicant_user = Application.objects.get(application_id=interview_obj['application_id'])
             applicant_email = applicant_user.applicant_id.id.email
             applicant_name = applicant_user.applicant_id.id.first_name
@@ -195,7 +243,8 @@ def InterviewView(request,pk=None):
             message_interviewer = (
             f'Dear {interviewer_firstname},\n\n'
             f'Please review the candidate\'s  resume and prepare any questions you may have. If the interview is virtual, the meeting link is attached below.\n\n'
-            'Best regards,\n'
+            'Best regards,\n\n'
+            f'Please provide the interview feedback on this url{subject_applicant}'
 
             )
             send_mail(subject_interviewer, message_interviewer, settings.EMAIL_HOST_USER, [interviewer_email])
@@ -419,360 +468,4 @@ def InterviewerCSV(request, format=None):
 
 
 
-#-----Google Form----
 
-
-
-
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
-
-logger = logging.getLogger(__name__)
-
-CLIENT_CONFIG = {
-    "web": {
-        "project_id": "sosbackend-433608",
-        "client_id": "559904441123-01fsreo2bi6leet54cc5cijbr1lmen37.apps.googleusercontent.com",
-        "client_secret": "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",
-        "redirect_uris": ["http://127.0.0.1:8000/google/forms/redirect/"],
-        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-        "token_uri": "https://oauth2.googleapis.com/token",
-        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    }
-}
-
-SCOPES = [
-    'https://www.googleapis.com/auth/forms',
-    'https://www.googleapis.com/auth/forms.body',
-    'https://www.googleapis.com/auth/forms.responses.readonly'
-
-]
-
-class GoogleFormsInitView(APIView):
-    def get(self, request):
-        try:
-            state = str(uuid.uuid4())
-            request.session['state'] = state
-
-            flow = Flow.from_client_config(CLIENT_CONFIG, SCOPES)
-            flow.redirect_uri = CLIENT_CONFIG['web']['redirect_uris'][0]
-            authorization_url, _ = flow.authorization_url(state=state)
-
-            return HttpResponseRedirect(authorization_url)
-        except Exception as e:
-            logger.error(f'Error in GoogleFormsInitView: {str(e)}')
-            return JsonResponse({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-from google.oauth2.credentials import Credentials
-logger = logging.getLogger(__name__)
-class GoogleFormsRedirectView(APIView):
-    def get(self, request):
-        try:
-            flow = Flow.from_client_config(CLIENT_CONFIG, SCOPES)
-            flow.redirect_uri = CLIENT_CONFIG['web']['redirect_uris'][0]
-            authorization_response = request.build_absolute_uri()
-            flow.fetch_token(authorization_response=authorization_response)
-
-            credentials = flow.credentials
-            request.session['credentials'] = {
-                'token': credentials.token,
-                'refresh_token': credentials.refresh_token,
-                'token_uri': credentials.token_uri,
-                'client_id': credentials.client_id,
-                'client_secret': credentials.client_secret,
-                'scopes': credentials.scopes
-            }
-            service = build('forms', 'v1', credentials=credentials)
-            form_id = self.create_form(service)
-            form_url, updated_form_id = self.update_form(service, form_id)
-
-            return Response({'form_url': form_url, 'form_id': updated_form_id}, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f'Error in GoogleFormsRedirectView: {str(e)}')
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-    def get_credentials_from_request(self, request):
-        credentials_data = request.session.get('credentials')
-        if not credentials_data:
-            return None
-        return Credentials(
-            token=credentials_data['token'],
-            refresh_token=credentials_data['refresh_token'],
-            token_uri=credentials_data['token_uri'],
-            client_id=credentials_data['client_id'],
-            client_secret=credentials_data['client_secret'],
-            scopes=credentials_data['scopes']
-        )
-
-    def create_form(self, service):
-        try:
-            form = service.forms().create(body={
-                'info': {
-                    'title': 'Interview Feedback Form',
-                }
-            }).execute()
-            form_id = form.get('formId')
-            logger.info(f'Form created with ID: {form_id}')
-            return form_id
-        except Exception as e:
-            logger.error(f'Error in create_form: {str(e)}')
-            raise
-
-    def update_form(self, service, form_id):
-        try:
-            form_fields = [
-                {
-                    'createItem': {
-                        'item': {
-                            'title': 'Name',
-                            'questionItem': {
-                                'question': {
-                                    'required': True,
-                                    'textQuestion': {}
-                                }
-                            }
-                        },
-                        'location': {
-                            'index': 0
-                        }
-                    }
-                },
-                {
-                    'createItem': {
-                        'item': {
-                            'title': 'Email',
-                            'questionItem': {
-                                'question': {
-                                    'required': True,
-                                    'textQuestion': {
-                                        'paragraph': False
-                                    }
-                                }
-                            }
-                        },
-                        'location': {
-                            'index': 1
-                        }
-                    }
-                },
-                {
-                    'createItem': {
-                        'item': {
-                            'title': 'Mobile Number',
-                            'questionItem': {
-                                'question': {
-                                    'required': True,
-                                    'textQuestion': {}
-                                }
-                            }
-                        },
-                        'location': {
-                            'index': 2
-                        }
-                    }
-                },
-                {
-                    'createItem': {
-                        'item': {
-                            'title': 'Feedback',
-                            'questionItem': {
-                                'question': {
-                                    'required': True,
-                                    'textQuestion': {}
-                                }
-                            }
-                        },
-                        'location': {
-                            'index': 3
-                        }
-                    }
-                }
-            ]
-
-            service.forms().batchUpdate(formId=form_id, body={'requests': form_fields}).execute()
-            form_url = f"https://docs.google.com/forms/d/{form_id}/viewform"
-            return form_url, form_id
-
-        except Exception as e:
-            logger.error(f'Error in update_form: {str(e)}')
-            raise
-
-class FormResponsesView(APIView):
-    def get(self, request, form_id):
-        try:
-            credentials = self.get_credentials_from_request(request)
-            service = build('forms', 'v1', credentials=credentials)
-            responses = self.get_form_responses(service, form_id)
-            return Response({'responses': responses}, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f'Error in FormResponsesView: {str(e)}')
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-    def get_credentials_from_request(self, request):
-        credentials_data = request.session.get('credentials')
-        return Credentials(
-            token=credentials_data['token'],
-            refresh_token=credentials_data['refresh_token'],
-            token_uri=credentials_data['token_uri'],
-            client_id=credentials_data['client_id'],
-            client_secret=credentials_data['client_secret'],
-            scopes=credentials_data['scopes']
-        )
-
-    def get_form_responses(self, service, form_id):
-        try:
-            responses = service.forms().responses().list(formId=form_id).execute()
-            print('\n\n\n',responses,'\n\n\n')
-            responses_data = responses.get('responses', [])
-            logger.info(f'Fetched {len(responses_data)} responses for Form ID: {form_id}')
-            return responses_data
-        except Exception as e:
-            logger.error(f'Error in get_form_responses: {str(e)}')
-            raise
-
-
-
-
-
-#-----------GOOGLE MEET CODE--------------------
-# from rest_framework import exceptions
-# import logging
-# import uuid
-# from django.core.mail import send_mail
-# from django.conf import  settings
-# import csv
-# from datetime import datetime
-# from google_auth_oauthlib.flow import Flow
-# from googleapiclient.discovery import build
-# import os
-# from django.http import HttpResponseRedirect
-# from rest_framework.views import APIView
-
-# OAUTHLIB_INSECURE_TRANSPORT= 1
-
-# CLIENT_CONFIG = {
-#     "web": {
-#     "client_id": "630519295088-juf629tr6av6brod4hmuaj9mb6u19jqr.apps.googleusercontent.com",
-#         "redirect_uris": ["http://127.0.0.1:8000/google/calendar/redirect/"],
-#     "project_id": "switchonsuccess",
-#     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-#     "token_uri": "https://oauth2.googleapis.com/token",
-#     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-#     "client_secret": "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"
-#   }
-# }
-# SCOPES = [
-#     'https://www.googleapis.com/auth/calendar.events',
-#     'https://www.googleapis.com/auth/calendar'
-# ]
-
-# logger = logging.getLogger(__name__)
-
-# class GoogleCalendarInitView(APIView):
-#     def get(self, request):
-#         try:
-#             interview_id = request.query_params.get('interview_id')
-#             date_str = request.query_params.get('scheduled_date')
-
-#             if not interview_id or not date_str:
-#                 return Response({"error": "Missing interview_id or scheduled_date"}, status=status.HTTP_400_BAD_REQUEST)
-
-#             try:
-#                 scheduled_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-#             except ValueError:
-#                 return Response({"error": "Invalid date format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
-
-#             state = str(uuid.uuid4())
-#             request.session['state'] = state
-#             request.session['interview_id'] = interview_id
-#             request.session['scheduled_date'] = scheduled_date.isoformat()
-
-#             flow = Flow.from_client_config(CLIENT_CONFIG, SCOPES)
-#             flow.redirect_uri = "http://127.0.0.1:8000/google/calendar/redirect/"
-#             authorization_url, _ = flow.authorization_url(state=state)
-
-#             return HttpResponseRedirect(authorization_url)
-#         except Exception as e:
-#             logger.error(f'Error in GoogleCalendarInitView: {str(e)}')
-#             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# class GoogleCalendarRedirectView(APIView):
-#     def set_session(self, request, credentials):
-#         request.session['credentials'] = {
-#             'token': credentials.token,
-#             'refresh_token': credentials.refresh_token,
-#             'token_uri': credentials.token_uri,
-#             'client_id': credentials.client_id,
-#             'client_secret': credentials.client_secret,
-#             'scopes': credentials.scopes,
-#         }
-
-#     def process_events(self, credentials, interview_id, scheduled_date):
-#         try:
-#             service = build('calendar', 'v3', credentials=credentials)
-
-#             event = {
-#                 'summary': 'Google Meet with Team',
-#                 'description': 'A Google Meet to discuss project details.',
-#                 'start': {
-#                     'dateTime': f'{scheduled_date}T10:00:00-07:00',
-#                     'timeZone': 'America/Los_Angeles',
-#                 },
-#                 'end': {
-#                     'dateTime': f'{scheduled_date}T11:00:00-07:00',
-#                     'timeZone': 'America/Los_Angeles',
-#                 },
-#                 'conferenceData': {
-#                     'createRequest': {
-#                         'requestId': str(uuid.uuid4()),
-#                         'conferenceSolutionKey': {'type': 'hangoutsMeet'}
-#                     }
-#                 },
-#                 'attendees': [{'email': 'example@example.com'}],
-#                 'reminders': {
-#                     'useDefault': False,
-#                     'overrides': [{'method': 'email', 'minutes': 24 * 60}, {'method': 'popup', 'minutes': 10}],
-#                 },
-#             }
-
-#             created_event = service.events().insert(
-#                 calendarId='primary',
-#                 body=event,
-#                 conferenceDataVersion=1
-#             ).execute()
-
-#             meet_link = created_event.get('hangoutLink', 'No Meet Link')
-
-#             from .models import Interview
-#             try:
-#                 interview = Interview.objects.get(interview_id=interview_id)
-#                 interview.virtual_link = meet_link
-#                 interview.save()
-#             except Interview.DoesNotExist:
-#                 return Response({"error": "Interview not found"}, status=status.HTTP_404_NOT_FOUND)
-
-#             return Response({'message': 'Event created', 'meet_link': meet_link, "scheduled_date": scheduled_date})
-#         except Exception as e:
-#             logger.error(f'Error in process_events: {str(e)}')
-#             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-#     def get(self, request):
-#         try:
-#             state = request.session.get('state')
-#             interview_id = request.session.get('interview_id')
-#             scheduled_date = request.session.get('scheduled_date')
-
-#             if not state or not interview_id or not scheduled_date:
-#                 return Response({"error": "Missing state, interview_id, or scheduled_date"}, status=status.HTTP_400_BAD_REQUEST)
-
-#             flow = Flow.from_client_config(CLIENT_CONFIG, SCOPES)
-#             flow.redirect_uri = "http://127.0.0.1:8000/google/calendar/redirect/"
-#             flow.fetch_token(authorization_response=request.build_absolute_uri())
-
-#             credentials = flow.credentials
-#             self.set_session(request, credentials)
-
-#             return self.process_events(credentials, interview_id, scheduled_date)
-#         except Exception as e:
-#             logger.error(f'Error in GoogleCalendarRedirectView: {str(e)}')
-#             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

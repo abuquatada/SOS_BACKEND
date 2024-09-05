@@ -67,19 +67,18 @@ def create_google_meet_event():
 SCOPES_ = ['https://www.googleapis.com/auth/forms.body', 'https://www.googleapis.com/auth/forms.responses.readonly']
 credentials_json__='D:/SOS/sos_2phasepractice/project/interviewer/service_creds.json'
 
-def create_google_form():
-    
+def google_form(interview_data):
     creds = service_account.Credentials.from_service_account_file(
         credentials_json__, scopes=SCOPES_)
     service = build('forms', 'v1', credentials=creds)
 
     NEW_FORM = {
         "info": {
-            "title": "Interview Feedback Form",
+            # "title": f"Interview Feedback Form - {interview_data}",
+            "title": f"Interview Feedback Form - {interview_data["applicant_name"]}",
             "documentTitle":"Feedback",
         }
     }
-
     NEW_QUESTION = {
         "requests": [
             {
@@ -122,32 +121,46 @@ def create_google_form():
                         },
                     },
                     "location": {"index": 1},
-                }}
+                }
+                },
+               { "createItem": {
+                    "item": {
+                        "title": "Comments",
+                        "questionItem": {
+                            "question": {
+                                "required": True,
+                                "textQuestion": {
+                                      "paragraph": True
+                                    
+                                },
+                            }
+                        },
+                    },
+                    "location": {"index": 2},
+                }
+                }
         ]
     }
 
     result = service.forms().create(body=NEW_FORM).execute()
-    print('\n\n\n',result,'\n\n\n')
     form_id = result['formId']
-    service.forms().batchUpdate(formId=form_id, body=NEW_QUESTION).execute()
-    
-    
-    form_link = f"https://docs.google.com/forms/d/{form_id}/viewform"
-    print('\n\n\n',form_link,'\n\n\n')
+    result_update = service.forms().batchUpdate(formId=form_id, body=NEW_QUESTION).execute()
+    # print(f'\n\n\nResult__ - {result_update}\n\n\n')
+    # print(f'\n\n\nResult - {result}\n\n\n')
+    return result , result_update
 
+# google_form()
 
-create_google_form()
-
-
-def fetch_and_store_responses():
+def fetch_and_store_responses(google_form_id):
     creds = service_account.Credentials.from_service_account_file(credentials_json__, scopes=SCOPES_)
     service = build('forms', 'v1', credentials=creds)
-    form_id="1Nr5n1OBP4YFeOOpfNI-UasCqGymK9-WuELUYR-Bmpuo"
-    # response_id = "ACYDBNhc1F-n_Dp8dnaaEvf7UI4Yc17lPMkNPo9bngivfRZ8dp8PxnjTcbDqrDzDQ_77I2s"
+    # form_id='1YoRZf3CTShDZc6w9fwASqsc_p40nGXjA3hoYOTYM01w'
+    form_id=google_form_id
     result = service.forms().responses().list(formId=form_id).execute()
+    # print('\n\n\n',f"this is result{result}",'\n\n\n')
     # result = (service.forms().responses().get(formId=form_id, responseId=response_id).execute())
-    print('\n\n',result,'\n\n')
     for response in result.get('responses', []):
-        print('\n\n',response,'\n\n')
-
-fetch_and_store_responses()
+        # print('\n\n\n',f'this is reponse{response}','\n\n\n')
+        return response
+    
+# fetch_and_store_responses()    

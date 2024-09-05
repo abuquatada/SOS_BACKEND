@@ -16,8 +16,7 @@ class InterviewPhaseSerializer(serializers.ModelSerializer):
 class InterviewSerializer(serializers.ModelSerializer):
     phase_details = serializers.SerializerMethodField(read_only=True)
     interviewer_details = serializers.SerializerMethodField(read_only=True)
-    
-    
+    feedback = serializers.SerializerMethodField(read_only=True)
     class Meta:
         model=Interview
         fields='__all__'
@@ -27,7 +26,13 @@ class InterviewSerializer(serializers.ModelSerializer):
         return InterviewPhaseSerializer(phase_obj).data    
     def get_interviewer_details(self, obj):
         interviewer_obj = Interviewer.objects.get(interview_interviewer=obj)
-        return InterviewerSerializer(interviewer_obj).data    
+        return InterviewerSerializer(interviewer_obj).data
+    def get_feedback(self,obj):
+        try :
+             feedback_obj = Interview_feedback.objects.get(Interview=obj)
+             return Interview_feedback_Serializer(feedback_obj).data    
+        except:
+            return []     
                 
 
 class InterviewQuestionSerializer(serializers.ModelSerializer):
@@ -42,3 +47,9 @@ class Interview_feedback_Serializer(serializers.ModelSerializer):
         model = Interview_feedback
         fields = "__all__" 
         
+class Google_formSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Google_form
+        fields = "__all__" 
+        
+               
