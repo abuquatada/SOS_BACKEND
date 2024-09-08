@@ -21,6 +21,7 @@ class   Recruiters(models.Model):
     total_years_of_experience = models.PositiveIntegerField(null=True,blank=True)
     languages = models.CharField(max_length=255, blank=True,null = True)
     about = models.CharField(null=True,max_length=1000)
+    profile_photo = models.ImageField(upload_to="media/profile_photos_recruiters", null=True, blank=True)
 
 
 class RecruiterEducation(models.Model):  

@@ -19,7 +19,8 @@ from django.db import IntegrityError
 from rest_framework import status 
 import csv
 from app.permissions import *
-
+import base64
+from django.core.files.base import ContentFile
 
 @csrf_exempt
 @api_view(['GET', 'POST','PATCH', 'DELETE'])  
@@ -240,7 +241,10 @@ def complete_profile_recruiter(request):
                    total_years_of_experience=data_line['total_years_of_experience'],
                    languages=data_line['languages'],
                    about=data_line['about']
-              ) 
+              )
+             profile_photo_data = base64.b64decode(data_line['profile_photo'])
+             recruiter.profile_photo.save(f"{user.username}_profile_photo.jpg", ContentFile(profile_photo_data))
+ 
             
              education_data = {
                 'recruiter_id': recruiter,
@@ -304,6 +308,11 @@ def complete_profile_recruiter(request):
                    languages=validate_data['languages'],
                    about=validate_data['about']
               )
+            
+            if 'profile_photo' in request.FILES:
+                recruiter.profile_photo = request.FILES['profile_photo']
+                recruiter.save()
+                
             companies = [int(companies) for companies in request.data.getlist('companies')]
             recruiter.companies.add(*companies)
         

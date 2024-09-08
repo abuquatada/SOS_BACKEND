@@ -24,6 +24,8 @@ from django.db.models import F
 from django.utils.dateparse import parse_datetime
 import csv
 from app.permissions import *
+import base64
+from django.core.files.base import ContentFile
 
 @csrf_exempt
 @api_view(['POST'])
@@ -65,6 +67,10 @@ def complete_profile_applicant(request):
                       languages=data_line['languages'],
                       about=data_line['about']
                     ) 
+            
+             profile_photo_data = base64.b64decode(data_line['profile_photo'])
+             applicant.profile_photo.save(f"{user.username}_profile_photo.jpg", ContentFile(profile_photo_data))
+             
              skill_name = data_line['skills'].split(',')
              for skill in skill_name:
                  ind,created = Skill.objects.get_or_create(skill_name=skill)
@@ -161,6 +167,9 @@ def complete_profile_applicant(request):
                       languages=validate_data['languages'],
                       about=validate_data['about']
                     )
+            if 'profile_photo' in request.FILES:
+                applicant.profile_photo = request.FILES['profile_photo']
+                applicant.save()
 
             skills = [int(skills) for skills in request.data.getlist('skills')]
             applicant.skills.add(*skills)

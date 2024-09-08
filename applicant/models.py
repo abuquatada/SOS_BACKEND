@@ -25,6 +25,8 @@ class Applicants(models.Model):
     work_permit_for_USA = models.BooleanField(default=False)
     languages = models.CharField(max_length=255, blank=True,null = True)
     about = models.CharField(null=True,max_length=1000)
+    profile_photo=models.ImageField(upload_to="media/profile_photos_applicants", null=True, blank=True)
+    
 
 class ApplicantEducation(models.Model):  
     applicant_id = models.ForeignKey(Applicants, on_delete=models.CASCADE,related_name='educations')
