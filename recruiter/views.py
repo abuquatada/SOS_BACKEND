@@ -18,11 +18,12 @@ from rest_framework.decorators import authentication_classes, permission_classes
 from django.db import IntegrityError
 from rest_framework import status 
 import csv
+from app.permissions import *
 
 
 @csrf_exempt
 @api_view(['GET', 'POST','PATCH', 'DELETE'])  
-# @permission_classes([IsAuthenticated]) 
+@permission_classes([IsAuthenticated ,IsAdminOrReadOnlyForRecruiters]) 
 def recruiter(request, pk=None):
     if request.method == 'GET':
         if pk is not None:
@@ -206,7 +207,7 @@ def recruiter_certification(request, pk=None):
 
 @csrf_exempt
 @api_view(['POST'])
-# @permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated , IsAdmin])
 def complete_profile_recruiter(request):
     if 'file' in request.FILES:
           csv_file = request.FILES['file']

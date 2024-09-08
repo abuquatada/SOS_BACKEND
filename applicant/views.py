@@ -235,34 +235,35 @@ def complete_profile_applicant(request):
 
 @csrf_exempt
 @api_view(['GET','PATCH', 'DELETE']) 
-@permission_classes([IsAuthenticated])  
+@permission_classes([IsAuthenticated, IsAdminOrRecruiterOrApplicantReadOnly]) 
 def applicant(request, pk=None):
     if request.method == 'GET':
         start_date_str = request.query_params.get('start_date')
         end_date_str = request.query_params.get('end_date')
+        
+        if start_date_str and end_date_str:
+          start_date = parse_datetime(start_date_str)
+          end_date = parse_datetime(end_date_str)
 
-        start_date = parse_datetime(start_date_str)
-        end_date = parse_datetime(end_date_str)
-
-        if not start_date or not end_date:
+          if not start_date or not end_date:
             return Response({'error': 'Invalid date format. Use YYYY-MM-DD format for dates.'}, status=400)
 
-        count=Applicants.objects.filter(created_at__range=[start_date,end_date]).count()
-        if 'count' in request.query_params:
+          count=Applicants.objects.filter(created_at__range=[start_date,end_date]).count()
+          if 'count' in request.query_params:
             return Response({'Applicants created in the given time period ': count})
        
-        
-        if pk is not None:
-            try:
+        else :
+            if pk is not None:
+              try:
                 profile = Applicants.objects.get(pk=pk)
                 serializer = ApplicantSerializer(profile)
                 return Response(serializer.data)
-            except Applicants.DoesNotExist:
+              except Applicants.DoesNotExist:
                 return Response(status=status.HTTP_404_NOT_FOUND)
-        else:
-            profiles = Applicants.objects.all()
-            serializer = ApplicantSerializer(profiles, many=True)
-            return Response(serializer.data)
+            else:
+              profiles = Applicants.objects.all()
+              serializer = ApplicantSerializer(profiles, many=True)
+              return Response(serializer.data)
         
     
     elif request.method == 'PATCH':
