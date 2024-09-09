@@ -26,6 +26,7 @@ import csv
 from app.permissions import *
 import base64
 from django.core.files.base import ContentFile
+from rest_framework.pagination import LimitOffsetPagination
 
 @csrf_exempt
 @api_view(['POST'])
@@ -271,9 +272,10 @@ def applicant(request, pk=None):
                 return Response(status=status.HTTP_404_NOT_FOUND)
             else:
               profiles = Applicants.objects.all()
-              serializer = ApplicantSerializer(profiles, many=True)
-              return Response(serializer.data)
-        
+              paginator = LimitOffsetPagination()
+              result_page = paginator.paginate_queryset(profiles, request)
+              serializer = ApplicantSerializer(result_page, many=True)
+              return paginator.get_paginated_response(serializer.data)
     
     elif request.method == 'PATCH':
         try:
@@ -341,8 +343,11 @@ def applicant_education(request, pk=None):
                 return Response({'Education not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             applicant_educations = ApplicantEducation.objects.all()
-            serializer = ApplicantEducationSerializer(applicant_educations, many=True)
-            return Response(serializer.data)
+            paginator = LimitOffsetPagination()
+            result_page = paginator.paginate_queryset(applicant_educations, request)
+            serializer = ApplicantEducationSerializer(result_page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
 
     
     elif request.method == 'POST':
@@ -387,8 +392,11 @@ def applicant_experience(request, pk=None):
                 return Response({'Experience not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             applicant_experiences = ApplicantExperience.objects.all()
-            serializer = ApplicantExperienceSerializer(applicant_experiences, many=True)
-            return Response(serializer.data)
+            paginator = LimitOffsetPagination()
+            result_page = paginator.paginate_queryset(applicant_experiences, request)
+            serializer = ApplicantExperienceSerializer(result_page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
 
     elif request.method == 'POST':
         serializer = ApplicantExperienceSerializer(data=request.data)
@@ -432,8 +440,11 @@ def applicant_internship(request, pk=None):
                 return Response({'Certification not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             applicant_internships = ApplicantInternship.objects.all()
-            serializer = ApplicantInternshipSerializer(applicant_internships, many=True)
-            return Response(serializer.data)
+            paginator = LimitOffsetPagination()
+            result_page = paginator.paginate_queryset(applicant_internships, request)
+            serializer = ApplicantInternshipSerializer(result_page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
 
     elif request.method == 'POST':
         serializer = ApplicantInternshipSerializer(data=request.data)
@@ -479,8 +490,11 @@ def applicant_certification(request, pk=None):
                 return Response({'Certification not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             applicant_certifications = ApplicantCertification.objects.all()
-            serializer = ApplicantCertificationSerializer(applicant_certifications, many=True)
-            return Response(serializer.data)
+            paginator = LimitOffsetPagination()
+            result_page = paginator.paginate_queryset(applicant_certifications, request)
+            serializer = ApplicantCertificationSerializer(result_page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
 
     elif request.method == 'POST':
         serializer = ApplicantCertificationSerializer(data=request.data)
@@ -588,8 +602,11 @@ def get_applicant(request,pk=None):
         return Response(serializers.data)
     else:
         obj = Applicants.objects.all()
-        serializers = Applicant_custom(obj,many=True)
-        return Response(serializers.data)
+        paginator = LimitOffsetPagination()
+        result_page = paginator.paginate_queryset(obj, request)
+        serializer = ApplicantSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
     
 @csrf_exempt
 @api_view(['GET'])
@@ -621,8 +638,11 @@ def get_application(request, pk=None,recr_id=None,job_id=None):
                 return Response({'Application not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             applications = Application.objects.all()
-            serializer = ApplicationSerializer(applications, many=True)
-            return Response(serializer.data) 
+            paginator = LimitOffsetPagination()
+            result_page = paginator.paginate_queryset(applications, request)
+            serializer = ApplicationSerializer(result_page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
 
 
 @csrf_exempt

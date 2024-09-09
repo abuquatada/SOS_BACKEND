@@ -21,6 +21,7 @@ from django.db.models import Max
 from collections import Counter
 from django.db.models import Count
 from collections import defaultdict
+from rest_framework.pagination import LimitOffsetPagination
 
 
 
@@ -44,8 +45,11 @@ def application(request, pk=None):
                 return Response({'Application not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             applications = Application.objects.all()
-            serializer = ApplicationSerializer(applications, many=True)
-            return Response(serializer.data)
+            paginator = LimitOffsetPagination()
+            result_page = paginator.paginate_queryset(applications, request)
+            serializer = ApplicationSerializer(result_page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
 
     elif request.method == 'POST':
         data=request.data
@@ -92,8 +96,11 @@ def applicationstatus(request, pk=None):
                 return Response({'ApplicationStatus not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             application_statuses = ApplicationStatus.objects.all()
-            serializer = ApplicationStatusSerializer(application_statuses, many=True)
-            return Response(serializer.data)
+            paginator = LimitOffsetPagination()
+            result_page = paginator.paginate_queryset(application_statuses, request)
+            serializer = ApplicationStatusSerializer(result_page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
 
     elif request.method == 'POST':
 
@@ -139,9 +146,11 @@ def applicationstatuslog(request, pk=None):
                 return Response({'ApplicationStatusLog not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             application_status_logs = ApplicationStatusLog.objects.all()
-            serializer = ApplicationStatusLogSerializer(application_status_logs, many=True)
-            return Response(serializer.data)
-
+            paginator = LimitOffsetPagination()
+            result_page = paginator.paginate_queryset(application_status_logs, request)
+            serializer = ApplicationStatusLogSerializer(result_page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+            
     elif request.method == 'POST':
        
         serializer = ApplicationStatusLogSerializer(data=request.data)

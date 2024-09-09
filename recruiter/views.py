@@ -21,6 +21,7 @@ import csv
 from app.permissions import *
 import base64
 from django.core.files.base import ContentFile
+from rest_framework.pagination import LimitOffsetPagination
 
 @csrf_exempt
 @api_view(['GET', 'POST','PATCH', 'DELETE'])  
@@ -36,8 +37,11 @@ def recruiter(request, pk=None):
                 return Response(status=status.HTTP_404_NOT_FOUND)
         else:
             profiles = Recruiters.objects.all()
-            serializer = RecruiterSerializer(profiles, many=True)
-            return Response(serializer.data)
+            paginator = LimitOffsetPagination()
+            result_page = paginator.paginate_queryset(profiles, request)
+            serializer = RecruiterSerializer(result_page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
         
     
     
@@ -85,8 +89,11 @@ def recruiter_education(request, pk=None):
                 return Response({'Education not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             recruiter_educations = RecruiterEducation.objects.all()
-            serializer = RecruiterEducationSerializer(recruiter_educations, many=True)
-            return Response(serializer.data)
+            paginator = LimitOffsetPagination()
+            result_page = paginator.paginate_queryset(recruiter_educations, request)
+            serializer = RecruiterEducationSerializer(result_page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+            
 
     elif request.method == 'POST':
         serializer = RecruiterEducationSerializer(data=request.data)
@@ -129,8 +136,11 @@ def recruiter_experience(request, pk=None):
                 return Response({'Experience not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             recruiter_experiences = RecruiterExperience.objects.all()
-            serializer = RecruiterExperienceSerializer(recruiter_experiences, many=True)
-            return Response(serializer.data)
+            paginator = LimitOffsetPagination()
+            result_page = paginator.paginate_queryset(recruiter_experiences, request)
+            serializer = RecruiterExperienceSerializer(result_page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+            
 
     elif request.method == 'POST':
         serializer = RecruiterExperienceSerializer(data=request.data)
@@ -174,9 +184,11 @@ def recruiter_certification(request, pk=None):
                 return Response({'Certification not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             recruiter_certifications = RecruiterCertification.objects.all()
-            serializer = RecruiterCertificationSerializer(recruiter_certifications, many=True)
-            return Response(serializer.data)
-
+            paginator = LimitOffsetPagination()
+            result_page = paginator.paginate_queryset(recruiter_certifications, request)
+            serializer = RecruiterCertificationSerializer(result_page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+            
     elif request.method == 'POST':
         serializer = RecruiterCertificationSerializer(data=request.data)
         if serializer.is_valid():
