@@ -32,7 +32,7 @@ os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 SECRET_KEY = os.environ.get('SECRET_KEY')
 DEBUG = os.environ.get('DEBUG') == 'True'
 
-ALLOWED_HOSTS = [ ]
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -112,12 +112,12 @@ WSGI_APPLICATION = 'project.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('Database_name'),
-        'USER': os.environ.get('Database_username'),
-        'PASSWORD': os.environ.get('Password'),
-        'HOST': os.environ.get('Host_name'), 
-        'PORT': '3306',       
+        'ENGINE':os.environ.get('ENGINE'),
+        'NAME': os.environ.get('NAME'),
+        'USER': os.environ.get('USER'),
+        'PASSWORD': os.environ.get('PASSWORD'),
+        'HOST': os.environ.get('HOST'), 
+        'PORT': os.environ.get('PORT'),       
     }
 }
 
