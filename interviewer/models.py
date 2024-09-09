@@ -1,6 +1,8 @@
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
-from application.models import Application 
+from application.models import Application
+from django.utils import timezone
+import uuid
 
 class Interviewer(models.Model):
     interviewer_id=models.AutoField(primary_key=True)
@@ -58,3 +60,12 @@ class Interview_feedback(models.Model):
     rating = models.IntegerField()
     comments = models.CharField(max_length=100) 
     created_at = models.DateTimeField(auto_now_add=True,null=True)  
+
+class OneTimeAccessToken(models.Model):
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    form_url = models.URLField()
+    expiry = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+
+    def is_valid(self):
+        return not self.is_used and self.expiry > timezone.now()
