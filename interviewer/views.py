@@ -19,6 +19,7 @@ from google_auth_oauthlib.flow import Flow
 from django.http import HttpResponseRedirect
 from rest_framework.views import APIView
 from django.http import JsonResponse
+from datetime import timedelta
 from googleapiclient.discovery import build
 
 
@@ -163,6 +164,8 @@ def InterviewView(request,pk=None):
         application_obj = Application.objects.get(application_id=interview_obj['application_id'])
         interviewer_obj = Interviewer.objects.get(interviewer_id=interview_obj['interviewer'])
         phase_obj = InterviewPhase.objects.get(phase_id=interview_obj['phase'])
+        status_obj=ApplicationStatus.objects.get(status_id=interview_obj['application_status'])
+
         
         scheduled_date = datetime.strptime(interview_obj['scheduled_date'], "%Y-%m-%d %I:%M %p")
         print('\n\n\n',f'schedule date and time{scheduled_date}','\n\n\n')
@@ -171,6 +174,8 @@ def InterviewView(request,pk=None):
         
         serializers=InterviewSerializer(data=interview_obj)
         if serializers.is_valid():
+            
+            
             if interview_obj['type'] == 'Virtual':
                 google_meet_link=create_google_meet_event()
                 obj_interview = Interview.objects.create(
@@ -194,6 +199,10 @@ def InterviewView(request,pk=None):
                 
             obj_interview.save()
             
+            application_satu=ApplicationStatusLog.objects.create(application_id=application_obj,
+                                                                  status_id=status_obj
+                                                                  )
+            application_satu.save()
             
             print(f'this is interview{obj_interview.interview_id}','\n\n\n')
             interview_data = {
@@ -467,5 +476,131 @@ def InterviewerCSV(request, format=None):
 
 
 
+
+
+CLIENT_CONFIG = {
+    "web": {
+        "project_id": "sosbackend-433608",
+        "client_id": "559904441123-01fsreo2bi6leet54cc5cijbr1lmen37.apps.googleusercontent.com",
+        "client_secret": "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",
+        "redirect_uris": ["http://127.0.0.1:8000/google/forms/redirect/"],
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    }
+}
+
+SCOPES = [
+    'https://www.googleapis.com/auth/forms',
+    'https://www.googleapis.com/auth/forms.body',
+    'https://www.googleapis.com/auth/forms.responses.readonly'
+]
+
+logger = logging.getLogger(__name__)
+
+class GoogleFormsInitView(APIView):
+    def get(self, request):
+        try:
+            state = str(uuid.uuid4())
+            request.session['state'] = state
+
+            flow = Flow.from_client_config(CLIENT_CONFIG, SCOPES)
+            flow.redirect_uri = CLIENT_CONFIG['web']['redirect_uris'][0]
+
+            authorization_url, _ = flow.authorization_url(state=state)
+            logger.info(f'Authorization URL: {authorization_url}')
+
+            return HttpResponseRedirect(authorization_url)
+        except Exception as e:
+            logger.error(f'Error in GoogleFormsInitView: {str(e)}')
+            return JsonResponse({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+logger = logging.getLogger(__name__)
+
+class GoogleFormsRedirectView(APIView):
+    def get(self, request):
+        try:
+            state = request.session.get('state')
+            if not state:
+                raise ValueError("State parameter missing from session")
+
+            flow = Flow.from_client_config(CLIENT_CONFIG, SCOPES)
+            flow.redirect_uri = CLIENT_CONFIG['web']['redirect_uris'][0]
+
+            authorization_response = request.build_absolute_uri()
+            logger.info(f'Authorization response URL: {authorization_response}')
+            flow.fetch_token(authorization_response=authorization_response)
+            credentials = flow.credentials
+            service = build('forms', 'v1', credentials=credentials)
+
+            form_id = self.create_form(service)
+            self.update_form(service, form_id)
+
+            token = uuid.uuid4()
+            expiry = timezone.now() + timedelta(hours=1)
+            OneTimeAccessToken.objects.create(
+                token=token,
+                form_url=f"https://docs.google.com/forms/d/{form_id}/viewform",
+                expiry=expiry
+            )
+
+            return Response({'Token': str(token)}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f'Error in GoogleFormsRedirectView: {str(e)}')
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def create_form(self, service):
+        try:
+            form = service.forms().create(body={
+                'info': {
+                    'title': 'Interview Feedback Form',
+                }
+            }).execute()
+            form_id = form.get('formId')
+            logger.info(f'Form created with ID: {form_id}')
+            return form_id
+        except Exception as e:
+            logger.error(f'Error in create_form: {str(e)}')
+            raise
+
+    def update_form(self, service, form_id):
+        try:
+            form_fields = [
+                {
+                    'createItem': {
+                        'item': {
+                            'title': 'Name',
+                            'questionItem': {
+                                'question': {
+                                    'required': True,
+                                    'textQuestion': {}
+                                }
+                            }
+                        },
+                        'location': {
+                            'index': 0
+                        }
+                    }
+                },
+            ]
+
+            service.forms().batchUpdate(formId=form_id, body={'requests': form_fields}).execute()
+            logger.info(f'Form updated with ID: {form_id}')
+        except Exception as e:
+            logger.error(f'Error in update_form: {str(e)}')
+            raise
+
+
+class AccessFormView(APIView):
+    def get(self, request, token):
+        try:
+            access_token = OneTimeAccessToken.objects.get(token=token)
+            if not access_token.is_valid():
+                return JsonResponse({'error': 'Invalid or expired token'}, status=status.HTTP_400_BAD_REQUEST)
+            access_token.is_used = True
+            access_token.save()
+            return HttpResponseRedirect(access_token.form_url)
+        except OneTimeAccessToken.DoesNotExist:
+            return JsonResponse({'error': 'Token does not exist'}, status=status.HTTP_400_BAD_REQUEST)
 
 
