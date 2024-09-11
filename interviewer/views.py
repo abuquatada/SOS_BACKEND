@@ -464,21 +464,3 @@ def InterviewerCSV(request, format=None):
         return Response(f"Error processing CSV: {e}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response('Interviewers added successfully', status=status.HTTP_201_CREATED)  
-
-
-
-
-
-
-
-@api_view(['POST'])
-def send_dummy(request):
-    subject_interviewer = 'You have been scheduled to conduct an interview'
-    message_interviewer = (
-    f'Dear Hassan,\n\n'
-    f'Please review the "\\033[1mThis text is bold!\\033[0m" candidate\'s  resume and prepare any questions you may have. If the interview is virtual, the meeting link is attached below.\n\n'
-    'Best regards,\n\n'
-    f'Please provide the interview feedback on this url' 
-    )
-    send_mail(subject_interviewer, message_interviewer, settings.EMAIL_HOST_USER, ['danishk9770@gmail.com'])
-    return Response('Done')
