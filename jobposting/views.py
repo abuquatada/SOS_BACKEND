@@ -378,6 +378,8 @@ def department(request, pk=None):
         return Response('Department deleted successfully',status=status.HTTP_204_NO_CONTENT)
 
 
+
+from app.pagination import *
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
 @permission_classes([  ])
@@ -391,9 +393,15 @@ def skills(request, pk=None):
             except Skill.DoesNotExist:
                 return Response(status=status.HTTP_404_NOT_FOUND)
         else:
+            size_= request.GET.get('size')  
+            if size_:
+                paginator = CustomPagination(size_)
+            else:    
+                paginator = CustomPagination(25)
             skills = Skill.objects.all()
-            serializer = SkillSerializer(skills, many=True)
-            return Response(serializer.data)
+            result_page = paginator.paginate_queryset(skills, request)
+            serializer = SkillSerializer(result_page, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
     elif request.method == 'POST':
         if 'file' in request.FILES:

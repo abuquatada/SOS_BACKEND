@@ -5,6 +5,7 @@ from app.models import CustomUser
 
 class Applicants(models.Model):        
     applicant_id = models.AutoField(primary_key=True)
+    profile_photo = models.ImageField(upload_to='applicant_documents/',null=True,blank=True)
     id = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     gender = models.CharField(max_length=20)
     date_of_birth = models.DateField(null=True,blank=True)
@@ -21,7 +22,7 @@ class Applicants(models.Model):
     total_years_of_experience = models.PositiveIntegerField(null=True,blank=True)
     interested_industry = models.ManyToManyField(Industry)
     interested_department = models.ManyToManyField(Department)
-    availability_to_join = models.CharField(max_length=20)
+    availability_to_join = models.CharField(max_length=20)  
     work_permit_for_USA = models.BooleanField(default=False)
     languages = models.CharField(max_length=255, blank=True,null = True)
     about = models.CharField(null=True,max_length=1000)
