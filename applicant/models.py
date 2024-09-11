@@ -5,7 +5,7 @@ from app.models import CustomUser
 
 class Applicants(models.Model):        
     applicant_id = models.AutoField(primary_key=True)
-    profile_photo = models.ImageField(upload_to='applicant_documents/',null=True)
+    profile_photo = models.ImageField(upload_to='applicant_documents/',null=True,blank=True)
     id = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     gender = models.CharField(max_length=20)
     date_of_birth = models.DateField(null=True,blank=True)
