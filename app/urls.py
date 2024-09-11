@@ -117,7 +117,4 @@ urlpatterns = [
     path('jobpostingcsv/',JobpostingCSV),
     path('applicant-document/',applicant_document),
     path('applicant-document/<int:pk>/',applicant_document),
-    path('send_',send_dummy),
-    
-
 ]
