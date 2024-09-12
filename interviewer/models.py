@@ -3,6 +3,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 from application.models import Application
 from django.utils import timezone
 import uuid
+from app.models import CustomUser
 
 class Interviewer(models.Model):
     interviewer_id=models.AutoField(primary_key=True)
@@ -69,3 +70,5 @@ class OneTimeAccessToken(models.Model):
 
     def is_valid(self):
         return not self.is_used and self.expiry > timezone.now()
+    
+
