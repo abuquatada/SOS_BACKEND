@@ -117,6 +117,7 @@ urlpatterns = [
     path('jobpostingcsv/',JobpostingCSV),
     path('applicant-document/',applicant_document),
     path('applicant-document/<int:pk>/',applicant_document),
+    path('applicant-document1/<int:applicant_id>/',applicant_documents, name='applicant-document-list'),
     path('google/forms/init/', GoogleFormsInitView.as_view(), name='google_forms_init'),
     path('google/forms/redirect/', GoogleFormsRedirectView.as_view(), name='google_forms_redirect'),
     path('google/forms/access/<uuid:token>/', AccessFormView.as_view(), name='access_form'),
