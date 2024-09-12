@@ -798,6 +798,7 @@ def applicant_document(request,pk=None):
              documentobj=Applicant_Document.objects.all()
              serializers=ApplicantDocumentSerializer(documentobj,many=True)
              return Response(serializers.data)
+         
      elif request.method=='POST':
              try:
                 documentobj=request.data
@@ -826,7 +827,12 @@ def applicant_document(request,pk=None):
              return Response (status=status.HTTP_404_NOT_FOUND)
          documentobj.delete()
          return Response("Deleted Successfully",status=status.HTTP_200_OK)
-                 
-                   
-
-
+    
+@api_view(['GET'])
+def applicant_documents(request,applicant_id=None):
+    try:
+      applicantobj=Applicant_Document.objects.filter(applicant_id=applicant_id)
+      serializers=ApplicantDocumentSerializer(applicantobj,many=True)
+      return Response(serializers.data)
+    except:
+        return Response("Applicant Not Found ",status=status.HTTP_404_NOT_FOUND)
