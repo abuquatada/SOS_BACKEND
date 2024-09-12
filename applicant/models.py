@@ -2,6 +2,7 @@ from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
 from jobposting.models import *
 from app.models import CustomUser
+import uuid
 
 class Applicants(models.Model):        
     applicant_id = models.AutoField(primary_key=True)
@@ -91,3 +92,4 @@ class Applicant_Document(models.Model):
         ("unverified","unverified"),
         ("verified","verified")
     ],default="pending")
+    upload_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True , null=True)
