@@ -14,9 +14,7 @@ from .filters import *
 from django.contrib.auth import authenticate, login, logout
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import authentication_classes, permission_classes
-from django.db import IntegrityError
 from rest_framework import status
 from django.db.models import Count
 from datetime import date
@@ -25,6 +23,7 @@ from django.utils.dateparse import parse_datetime
 import csv
 from django.urls import reverse
 from django.shortcuts import get_object_or_404
+from django.core.signing import TimestampSigner, BadSignature, SignatureExpired
 
 @csrf_exempt
 @api_view(['POST'])
@@ -835,45 +834,46 @@ def applicant_document(request,pk=None):
 def send_document_upload_link(request, job_id, applicant_id):
     applicant = get_object_or_404(Applicants, pk=applicant_id)
     job = get_object_or_404(JobPosting, pk=job_id)
+    
+    signer = TimestampSigner()
+    signed_data = signer.sign(f'{applicant_id}:{job_id}')
 
-
-    upload_token = uuid.uuid4()
-
- 
+    upload_url = request.build_absolute_uri(f'/uploaddocument/{signed_data}/')
+    
     applicant_document = Applicant_Document.objects.create(
         applicant_id=applicant,
         job_id=job,
-        upload_token=upload_token
     )
-
-
-    upload_url = request.build_absolute_uri(f'/uploaddocument/{upload_token}/')
 
     mail_subject = 'Document Upload Request'
     mail_body = f'Please upload your document using the following link: {upload_url}\n\n{request.data.get("mail_body")}'
-    recipient_email = applicant_document.applicant_id.id.email
+    recipient_email =applicant_document.applicant_id.id.email
     send_mail(mail_subject, mail_body, settings.DEFAULT_FROM_EMAIL, [recipient_email])
 
     return Response({'message': 'Email sent successfully with upload link.'}, status=200)
 
 @api_view(['POST'])
 def document_upload_view(request, token):
+    
+    signer = TimestampSigner()
 
     try:
-        applicant_document = get_object_or_404(Applicant_Document, upload_token=token)
-    except Applicant_Document.DoesNotExist:
+
+        signed_data = signer.unsign(token, max_age=86400) 
+        applicant_id, job_id = signed_data.split(':')
+
+        applicant_document = get_object_or_404(Applicant_Document, applicant_id=applicant_id, job_id=job_id)
+        
+        if 'document' in request.FILES:
+            applicant_document.document = request.FILES['document']
+            applicant_document.verified = 'pending'  
+            applicant_document.save()
+
+            return Response({'message': 'Document uploaded successfully'}, status=200)
+        else:
+            return Response({'error': 'No document provided'}, status=400)
+
+    except (BadSignature, SignatureExpired):
         return Response({'error': 'Invalid or expired token'}, status=400)
-    
-
-    if 'document' in request.FILES:
-        applicant_document.document = request.FILES['document']
-        applicant_document.verified = 'pending'  
-        applicant_document.save()
 
 
-        applicant_document.upload_token = None
-        applicant_document.save()
-
-        return Response({'message': 'Document uploaded successfully'})
-    else:
-        return Response({'error': 'No document provided'}, status=400)

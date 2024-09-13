@@ -118,5 +118,5 @@ urlpatterns = [
     path('applicant-document/',applicant_document),
     path('applicant-document/<int:pk>/',applicant_document),
     path('senduploadlink/<int:job_id>/<int:applicant_id>/', send_document_upload_link),
-    path('uploaddocument/<uuid:token>/', document_upload_view)
+    path('uploaddocument/<str:token>/', document_upload_view)
 ]

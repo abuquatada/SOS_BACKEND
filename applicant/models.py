@@ -92,4 +92,3 @@ class Applicant_Document(models.Model):
         ("unverified","unverified"),
         ("verified","verified")
     ],default="pending")
-    upload_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True , null=True)
