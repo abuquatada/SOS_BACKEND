@@ -21,6 +21,7 @@ from rest_framework.views import APIView
 from django.http import JsonResponse
 from datetime import timedelta
 from googleapiclient.discovery import build
+from .pagination import *
 
 
 
@@ -38,8 +39,10 @@ def InterviewerViews(request, pk=None):
                     return Response(status=status.HTTP_404_NOT_FOUND)
             else:
                 Interviewerobj=Interviewer.objects.all()
-                serializers=InterviewerSerializer(Interviewerobj,many=True).data
-                return Response(serializers)
+                paginator=CustomePagination()
+                interviewer_obj=paginator.paginate_queryset(Interviewerobj,request)
+                serializers=InterviewerSerializer(interviewer_obj,many=True).data
+                return paginator.get_paginated_response(serializers)
         
     elif request.method=='POST':
         if 'file' in request.FILES:
@@ -152,8 +155,10 @@ def InterviewView(request,pk=None):
             #     return Response(status=status.HTTP_404_NOT_FOUND)
         else:
             interview_obj=Interview.objects.all()
-            serializers=InterviewSerializer(interview_obj,many=True)
-            return Response(serializers.data)
+            paginator=CustomePagination()
+            interviewobj=paginator.paginate_queryset(interview_obj,request)
+            serializers=InterviewSerializer(interviewobj,many=True)
+            return paginator.get_paginated_response(serializers.data)
         
     elif request.method=='POST':
         try:
@@ -305,8 +310,10 @@ def InterviewPhaseView(request, pk=None):
                 return Response(status=status.HTTP_404_NOT_FOUND)
         else:
             phase_objs = InterviewPhase.objects.all()
-            serializers = InterviewPhaseSerializer(phase_objs, many=True)
-            return Response(serializers.data)
+            paginator=CustomePagination()
+            phaseobj=paginator.paginate_queryset(phase_objs,request)
+            serializers = InterviewPhaseSerializer(phaseobj, many=True)
+            return paginator.get_paginated_response(serializers.data)
         
     elif request.method == 'POST':
         serializers = InterviewPhaseSerializer(data=request.data)
@@ -347,8 +354,10 @@ def InterviewQuestionView(request, pk=None):
                 return Response(status=status.HTTP_404_NOT_FOUND)
         else:
             question_objs = InterviewQuestion.objects.all()
-            serializers = InterviewQuestionSerializer(question_objs, many=True)
-            return Response(serializers.data)
+            paginator=CustomePagination()
+            questionobj=paginator.paginate_queryset(question_objs,request)
+            serializers = InterviewQuestionSerializer(questionobj, many=True)
+            return paginator.get_paginated_response(serializers.data)
         
     elif request.method == 'POST':
         serializers = InterviewQuestionSerializer(data=request.data)
@@ -397,8 +406,10 @@ def Interview_Feedback_View(request, pk=None):
                 )
         else:
             feedback_obj = Interview_feedback.objects.all()
-            serializer = Interview_feedback_Serializer(feedback_obj, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            paginator=CustomePagination()
+            feedbackobj=paginator.paginate_queryset(feedback_obj,request)
+            serializer = Interview_feedback_Serializer(feedbackobj, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
     elif request.method == "POST":
         data = request.data

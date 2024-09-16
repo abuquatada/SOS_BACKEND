@@ -23,6 +23,7 @@ from datetime import date
 from django.db.models import F
 from django.utils.dateparse import parse_datetime
 import csv
+from .pagination import *
 
 @csrf_exempt
 @api_view(['POST'])
@@ -260,8 +261,10 @@ def applicant(request, pk=None):
                 return Response(status=status.HTTP_404_NOT_FOUND)
         else:
             profiles = Applicants.objects.all()
-            serializer = ApplicantSerializer(profiles, many=True)
-            return Response(serializer.data)
+            paginator=CustomePagination()
+            applicant_obj=paginator.paginate_queryset(profiles,request)
+            serializer = ApplicantSerializer(applicant_obj, many=True)
+            return paginator.get_paginated_response(serializer.data)
         
     
     elif request.method == 'PATCH':
@@ -330,8 +333,10 @@ def applicant_education(request, pk=None):
                 return Response({'Education not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             applicant_educations = ApplicantEducation.objects.all()
-            serializer = ApplicantEducationSerializer(applicant_educations, many=True)
-            return Response(serializer.data)
+            paginator=CustomePagination()
+            applicant_obj=paginator.paginate_queryset(applicant_educations,request)
+            serializer = ApplicantEducationSerializer(applicant_obj, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
     
     elif request.method == 'POST':
@@ -376,8 +381,10 @@ def applicant_experience(request, pk=None):
                 return Response({'Experience not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             applicant_experiences = ApplicantExperience.objects.all()
-            serializer = ApplicantExperienceSerializer(applicant_experiences, many=True)
-            return Response(serializer.data)
+            paginator=CustomePagination()
+            applicant_obj=paginator.paginate_queryset(applicant_experiences,request)
+            serializer = ApplicantExperienceSerializer(applicant_obj, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
     elif request.method == 'POST':
         serializer = ApplicantExperienceSerializer(data=request.data)
@@ -421,8 +428,10 @@ def applicant_internship(request, pk=None):
                 return Response({'Certification not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             applicant_internships = ApplicantInternship.objects.all()
-            serializer = ApplicantInternshipSerializer(applicant_internships, many=True)
-            return Response(serializer.data)
+            paginator=CustomePagination()
+            applicant_obj=paginator.paginate_queryset(applicant_internships,request)
+            serializer = ApplicantInternshipSerializer(applicant_obj, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
     elif request.method == 'POST':
         serializer = ApplicantInternshipSerializer(data=request.data)
@@ -621,8 +630,10 @@ def get_application(request, pk=None,recr_id=None,job_id=None):
                 return Response({'Application not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             applications = Application.objects.all()
-            serializer = ApplicationSerializer(applications, many=True)
-            return Response(serializer.data) 
+            paginator=CustomePagination()
+            applicant_obj=paginator.paginate_queryset(applications,request)
+            serializer = ApplicationSerializer(applicant_obj, many=True)
+            return paginator.get_paginated_response(serializer.data) 
 
 
 @csrf_exempt
@@ -796,8 +807,10 @@ def applicant_document(request,pk=None):
                    return Response('Applicant Documnet Not Found',status=status.HTTP_404_NOT_FOUND)
          else:
              documentobj=Applicant_Document.objects.all()
-             serializers=ApplicantDocumentSerializer(documentobj,many=True)
-             return Response(serializers.data)
+             paginator=CustomePagination()
+             document_obj=paginator.paginate_queryset(documentobj,request)
+             serializers=ApplicantDocumentSerializer(document_obj,many=True)
+             return paginator.get_paginated_response(serializers.data)
          
      elif request.method=='POST':
              try:

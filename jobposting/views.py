@@ -18,6 +18,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 import csv
 from datetime import datetime
+from .pagination import *
 
 @csrf_exempt
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
@@ -33,8 +34,10 @@ def jobstatus(request, pk=None):
                 return Response({'JobStatus not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             job_statuses = JobStatus.objects.all()
-            serializer = JobStatusSerializer(job_statuses, many=True)
-            return Response(serializer.data)
+            paginator=CustomePagination()
+            job_obj=paginator.paginate_queryset(job_statuses,request)
+            serializer = JobStatusSerializer(job_obj, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
     elif request.method == 'POST':
         user_id = request.data.get('user')
@@ -99,8 +102,10 @@ def jobposting(request, pk=None):
                 return Response({'JobPosting not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             jobpostings = JobPosting.objects.all()
-            serializer = JobPostingSerializer(jobpostings, many=True)
-            return Response(serializer.data)
+            paginator=CustomePagination()
+            job_obj=paginator.paginate_queryset(jobpostings,request)
+            serializer = JobPostingSerializer(job_obj, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
 
     elif request.method == 'POST':
@@ -186,8 +191,10 @@ def jobstatuslog(request, pk=None):
                 return Response({'JobStatusLog not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             jobstatuslogs = JobStatusLog.objects.all()
-            serializer = JobStatusLogSerializer(jobstatuslogs, many=True)
-            return Response(serializer.data)
+            paginator=CustomePagination()
+            job_obj=paginator.paginate_queryset(jobstatuslogs,request)
+            serializer = JobStatusLogSerializer(job_obj, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
     elif request.method == 'POST':
         user_id = request.data.get('user')
@@ -247,8 +254,10 @@ def industry(request, pk=None):
                 return Response(status=status.HTTP_404_NOT_FOUND)
         else:
             industries = Industry.objects.all()
-            serializer = IndustrySerializer(industries, many=True)
-            return Response(serializer.data)
+            paginator=CustomePagination()
+            industry_obj=paginator.paginate_queryset(industries,request)
+            serializer = IndustrySerializer(industry_obj, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
     elif request.method == 'POST':
         if 'file' in request.FILES:
@@ -306,8 +315,10 @@ def department(request, pk=None):
                 return Response(status=status.HTTP_404_NOT_FOUND)
         else:
             departments = Department.objects.all()
-            serializer = DepartmentSerializer(departments, many=True)
-            return Response(serializer.data)
+            paginator=CustomePagination()
+            department_obj=paginator.paginate_queryset(departments,request)
+            serializer = DepartmentSerializer(department_obj, many=True)
+            return paginator.get_paginated_response(serializer.data)
     
     elif request.method == 'POST':
         if 'file' in request.FILES:
@@ -392,8 +403,10 @@ def skills(request, pk=None):
                 return Response(status=status.HTTP_404_NOT_FOUND)
         else:
             skills = Skill.objects.all()
-            serializer = SkillSerializer(skills, many=True)
-            return Response(serializer.data)
+            paginator=CustomePagination()
+            skill_obj=paginator.paginate_queryset(skills,request)
+            serializer = SkillSerializer(skill_obj, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
     elif request.method == 'POST':
         if 'file' in request.FILES:
@@ -449,8 +462,10 @@ def company(request, pk=None):
                 return Response({'error': 'Company not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             companies = Company.objects.prefetch_related('locations').all()
-            serializer = CompanySerializer3(companies, many=True)
-            return Response(serializer.data)
+            paginator=CustomePagination()
+            company_obj=paginator.paginate_queryset(companies,request)
+            serializer = CompanySerializer3(company_obj, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
     
 
@@ -537,8 +552,10 @@ def location(request, company_id=None, location_id=None):
                 return Response({'error': 'Location not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             locations = Location.objects.all()
-            serializer = LocationSerializer(locations, many=True)
-            return Response(serializer.data)
+            paginator=CustomePagination()
+            location_obj=paginator.paginate_queryset(locations,request)
+            serializer = LocationSerializer(location_obj, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
     elif request.method == 'POST':
         if 'file' in request.FILES:

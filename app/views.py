@@ -21,6 +21,7 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.contrib.auth.hashers import check_password
+from .pagination import Userpagination
 
 
 
@@ -28,8 +29,10 @@ from django.contrib.auth.hashers import check_password
 class User(APIView):
     def get(self,request):
           users = CustomUser.objects.all()
-          serializer = UserSerializer(users, many=True)
-          return Response(serializer.data)
+          paginator=Userpagination()
+          paginatorobj=paginator.paginate_queryset(users,request)
+          serializer = UserSerializer(paginatorobj, many=True)
+          return paginator.get_paginated_response(serializer.data)
     
     def post(self,request):
         validate_data = request.data
