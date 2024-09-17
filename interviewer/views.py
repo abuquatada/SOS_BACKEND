@@ -20,7 +20,7 @@ from django.http import HttpResponseRedirect
 from rest_framework.views import APIView
 from django.http import JsonResponse
 from googleapiclient.discovery import build
-
+from django.utils import timezone
 
 
 
@@ -180,7 +180,8 @@ def InterviewView(request,pk=None):
                                                             application_id=application_obj,
                                                             phase=phase_obj,
                                                             interviewer=interviewer_obj,
-                                                            virtual_link=google_meet_link
+                                                            virtual_link=google_meet_link,
+                                                            status=interview_obj["status"]
                                                              )
             else:    
                 obj_interview = Interview.objects.create(type=interview_obj["type"],
@@ -190,32 +191,33 @@ def InterviewView(request,pk=None):
                                                             phase=phase_obj,
                                                             location=interview_obj['location'],
                                                             interviewer=interviewer_obj,
+                                                            status=interview_obj["status"]
                                                              )
                 
             obj_interview.save()
             
             
             print(f'this is interview{obj_interview.interview_id}','\n\n\n')
-            interview_data = {
-                "applicant_name":obj_interview.application_id.applicant_id.id.first_name
-            }
-            question_data=[]
-            feedback_form = google_form(interview_data)
-            print('\n\n\n',f'feedback data {feedback_form}','\n\n\n')
-            for i in feedback_form[1]['replies']:
-                d = i['createItem']['questionId']
-                question_data.extend(d)
+            # interview_data = {
+            #     "applicant_name":obj_interview.application_id.applicant_id.id.first_name
+            # }
+            # question_data=[]
+            # feedback_form = google_form(interview_data)
+            # print('\n\n\n',f'feedback data {feedback_form}','\n\n\n')
+            # for i in feedback_form[1]['replies']:
+            #     d = i['createItem']['questionId']
+            #     question_data.extend(d)
                 
-            print(question_data)
-            feedback_obj = Google_form.objects.create(
-                                            google_form_id=feedback_form[0]['formId'],
-                                            interview=obj_interview,
-                                            feedback_url=feedback_form[0]['responderUri'],
-                                            status_question_id=question_data[0],
-                                            rating_question_id=question_data[1],
-                                            comments_question_id=question_data[2],
-                                            )
-            feedback_obj.save() 
+            # print(question_data)
+            # feedback_obj = Google_form.objects.create(
+            #                                 google_form_id=feedback_form[0]['formId'],
+            #                                 interview=obj_interview,
+            #                                 feedback_url=feedback_form[0]['responderUri'],
+            #                                 status_question_id=question_data[0],
+            #                                 rating_question_id=question_data[1],
+            #                                 comments_question_id=question_data[2],
+            #                                 )
+            # feedback_obj.save() 
             
             applicant_user = Application.objects.get(application_id=interview_obj['application_id'])
             applicant_email = applicant_user.applicant_id.id.email
@@ -248,8 +250,20 @@ def InterviewView(request,pk=None):
 
             )
             send_mail(subject_interviewer, message_interviewer, settings.EMAIL_HOST_USER, [interviewer_email])
-            return Response('Interview Added',status=status.HTTP_200_OK)
-        return Response(serializers.errors,status=status.HTTP_404_NOT_FOUND)
+            
+            interview_scheduled_status, created = ApplicationStatus.objects.get_or_create(status_name='scheduled')
+            print(f"Status retrieved or created: {interview_scheduled_status}")
+       
+            ApplicationStatusLog.objects.create(
+            application_id=application_obj,
+            status_id=interview_scheduled_status,
+            date_changed=timezone.now()
+            )
+
+            return Response('Interview Added and Application Status Updated', status=status.HTTP_200_OK)
+
+        return Response(serializers.errors, status=status.HTTP_404_NOT_FOUND)
+
     
     elif request.method=='PATCH':
         try:
