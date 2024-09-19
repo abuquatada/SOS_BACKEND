@@ -95,7 +95,6 @@ def applicationstatus(request, pk=None):
 
     elif request.method == 'POST':
 
-
         serializer = ApplicationStatusSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()

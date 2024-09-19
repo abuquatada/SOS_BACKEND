@@ -20,7 +20,7 @@ from django.http import HttpResponseRedirect
 from rest_framework.views import APIView
 from django.http import JsonResponse
 from googleapiclient.discovery import build
-
+from django.utils import timezone
 
 
 
@@ -210,8 +210,7 @@ def InterviewView(request,pk=None):
         
         serializers=InterviewSerializer(data=interview_obj)
         if serializers.is_valid():
-            if interview_obj['type'] == 'Virtual':
-                inter_data = {
+           inter_data = {
                                 "type":interview_obj["type"],
                                 "scheduled_date":scheduled_date, 
                                 "notes":interview_obj["notes"],
@@ -219,14 +218,13 @@ def InterviewView(request,pk=None):
                                 "phase":phase_obj,
                                 "interviewer":interviewer_obj,
                 }
+            if interview_obj['type'] == 'Virtual':
                 phase_name = phase_obj.phase_name
                 google_meet_link=create_google_meet_event(inter_data,phase_name)
                 obj_interview = Interview.objects.create(virtual_link=google_meet_link,**inter_data)
             else:    
                 obj_interview = Interview.objects.create(location=interview_obj['location'],**inter_data)
-                
             obj_interview.save()
-            
             
             interview_data = {
                 "applicant_name":obj_interview.application_id.applicant_id.id.first_name
@@ -245,6 +243,7 @@ def InterviewView(request,pk=None):
                                             comments_question_id=question_data[2],
                                             )
             feedback_obj.save() 
+
             
             applicant_user = Application.objects.get(application_id=interview_obj['application_id'])
             applicant_email = applicant_user.applicant_id.id.email
@@ -277,8 +276,20 @@ def InterviewView(request,pk=None):
 
             )
             send_mail(subject_interviewer, message_interviewer, settings.EMAIL_HOST_USER, [interviewer_email])
-            return Response('Interview Added',status=status.HTTP_200_OK)
-        return Response(serializers.errors,status=status.HTTP_404_NOT_FOUND)
+            
+            interview_scheduled_status, created = ApplicationStatus.objects.get_or_create(status_name='scheduled')
+            print(f"Status retrieved or created: {interview_scheduled_status}")
+       
+            ApplicationStatusLog.objects.create(
+            application_id=application_obj,
+            status_id=interview_scheduled_status,
+            date_changed=timezone.now()
+            )
+
+            return Response('Interview Added and Application Status Updated', status=status.HTTP_200_OK)
+
+        return Response(serializers.errors, status=status.HTTP_404_NOT_FOUND)
+
     
     elif request.method=='PATCH':
         try:
@@ -491,5 +502,5 @@ def InterviewerCSV(request, format=None):
 
     except Exception as e:
         return Response(f"Error processing CSV: {e}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
     return Response('Interviewers added successfully', status=status.HTTP_201_CREATED)  
+

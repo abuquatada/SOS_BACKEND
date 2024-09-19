@@ -2,6 +2,7 @@ from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
 from jobposting.models import *
 from app.models import CustomUser
+import uuid
 
 class Applicants(models.Model):        
     applicant_id = models.AutoField(primary_key=True)
