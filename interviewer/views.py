@@ -109,13 +109,54 @@ def InterviewView(request,pk=None):
         if app_id :
             try:
                 interview_obj=Interview.objects.filter(application_id=app_id)
-                serializers=InterviewSerializer(interview_obj,many=True)
-                return Response(serializers.data)
-            except:
-                return Response(status=status.HTTP_404_NOT_FOUND)
+                serializers=InterviewSerializer(interview_obj,many=True).data
+                print(f'\n\n\nthis is serializers {serializers}\n\n\n')
+                for i in serializers:
+                    print('\n\n\n',f'This is I {i}','\n\n\n')
+                    print('\n\n\n',f'this is interview id {i['interview_id']}','\n\n\n')
+                    print('\n\n\n',i['feedback'],'\n\n\n')
+                    for j in serializers:
+                        print(f'\n\n\n This is J{j}\n\n\n')
+                    if len(i['feedback']) == 0:
+                        try:
+                            interview_obj=Interview.objects.get(pk=i['interview_id'])
+                            form_obj = Google_form.objects.get(interview=i['interview_id'])
+                            print('\n\n\n',form_obj,'\n\n\n')
+                            status_id = form_obj.status_question_id
+                            rating_id = form_obj.rating_question_id
+                            comment_id = form_obj.comments_question_id
+                            form_serializer = Google_formSerializer(form_obj).data
+                            fetch_response= fetch_and_store_responses(form_serializer['google_form_id'])
+                            print('\n\n\n',fetch_response,'\n\n\n')
+                            for key, value in fetch_response['answers'].items():
+                                print('\n\n\n'f'Key {key}','\n\n\n')
+                                print('\n\n\n'f'Value {value}','\n\n\n')
+                                if status_id == value['questionId']:
+                                    sta = value['textAnswers']['answers'][0]['value']
+                                    print('\n\n\n'f'sta {sta}','\n\n\n')
+                                    interview_obj_ = Interview.objects.filter(interview_id=interview_obj.interview_id).update(status=sta)
+                                if rating_id == value['questionId']:
+                                    rating_value__ = value['textAnswers']['answers'][0]['value']
+                                if comment_id == value['questionId']:
+                                    comment_value__ = value['textAnswers']['answers'][0]['value']
+                            print(f'Rating {rating_value__}')                
+                            print(f'Comment {comment_value__}')                
+                            inv_feedback_obj = Interview_feedback.objects.create(
+                                Interview=interview_obj,
+                                rating=rating_value__,
+                                comments=comment_value__
+                            )  
+                            inv_feedback_obj.save()
+                            return Response(serializers)
+                        except:
+                            return Response(serializers) 
+                    else:
+                        return Response(serializers)       
+            except Exception as e:
+                return Response({'Error':e},status=status.HTTP_404_NOT_FOUND)
             
         elif pk is not None:
-            # try:
+            try:
                 interview_obj=Interview.objects.get(pk=pk)
                 serializers=InterviewSerializer(interview_obj).data
                 if len(serializers['feedback']) == 0:
@@ -147,8 +188,8 @@ def InterviewView(request,pk=None):
                         return Response(serializers)    
                 else:  
                     return Response(serializers)
-            # except:
-            #     return Response(status=status.HTTP_404_NOT_FOUND)
+            except:
+                return Response(status=status.HTTP_404_NOT_FOUND)
         else:
             interview_obj=Interview.objects.all()
             serializers=InterviewSerializer(interview_obj,many=True)
@@ -157,7 +198,6 @@ def InterviewView(request,pk=None):
     elif request.method=='POST':
         try:
          interview_obj=request.data
-         print('\n\n\n',interview_obj,'\n\n\n')
         except:
             return Response(status=status.HTTP_404_NOT_FOUND)
         application_obj = Application.objects.get(application_id=interview_obj['application_id'])
@@ -165,48 +205,37 @@ def InterviewView(request,pk=None):
         phase_obj = InterviewPhase.objects.get(phase_id=interview_obj['phase'])
         
         scheduled_date = datetime.strptime(interview_obj['scheduled_date'], "%Y-%m-%d %I:%M %p")
-        print('\n\n\n',f'schedule date and time{scheduled_date}','\n\n\n')
         iso_scheduled_date = scheduled_date.isoformat() + 'Z'
         interview_obj['scheduled_date'] = iso_scheduled_date
         
         serializers=InterviewSerializer(data=interview_obj)
         if serializers.is_valid():
             if interview_obj['type'] == 'Virtual':
-                google_meet_link=create_google_meet_event()
-                obj_interview = Interview.objects.create(
-                                                            type=interview_obj["type"],
-                                                            scheduled_date=scheduled_date, 
-                                                            notes=interview_obj["notes"],
-                                                            application_id=application_obj,
-                                                            phase=phase_obj,
-                                                            interviewer=interviewer_obj,
-                                                            virtual_link=google_meet_link
-                                                             )
+                inter_data = {
+                                "type":interview_obj["type"],
+                                "scheduled_date":scheduled_date, 
+                                "notes":interview_obj["notes"],
+                                "application_id":application_obj,
+                                "phase":phase_obj,
+                                "interviewer":interviewer_obj,
+                }
+                phase_name = phase_obj.phase_name
+                google_meet_link=create_google_meet_event(inter_data,phase_name)
+                obj_interview = Interview.objects.create(virtual_link=google_meet_link,**inter_data)
             else:    
-                obj_interview = Interview.objects.create(type=interview_obj["type"],
-                                                            scheduled_date=scheduled_date, 
-                                                            notes=interview_obj["notes"],
-                                                            application_id=application_obj,
-                                                            phase=phase_obj,
-                                                            location=interview_obj['location'],
-                                                            interviewer=interviewer_obj,
-                                                             )
+                obj_interview = Interview.objects.create(location=interview_obj['location'],**inter_data)
                 
             obj_interview.save()
             
             
-            print(f'this is interview{obj_interview.interview_id}','\n\n\n')
             interview_data = {
                 "applicant_name":obj_interview.application_id.applicant_id.id.first_name
             }
             question_data=[]
             feedback_form = google_form(interview_data)
-            print('\n\n\n',f'feedback data {feedback_form}','\n\n\n')
             for i in feedback_form[1]['replies']:
                 d = i['createItem']['questionId']
                 question_data.extend(d)
-                
-            print(question_data)
             feedback_obj = Google_form.objects.create(
                                             google_form_id=feedback_form[0]['formId'],
                                             interview=obj_interview,
@@ -464,21 +493,3 @@ def InterviewerCSV(request, format=None):
         return Response(f"Error processing CSV: {e}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response('Interviewers added successfully', status=status.HTTP_201_CREATED)  
-
-
-
-
-
-
-
-@api_view(['POST'])
-def send_dummy(request):
-    subject_interviewer = 'You have been scheduled to conduct an interview'
-    message_interviewer = (
-    f'Dear Hassan,\n\n'
-    f'Please review the "\\033[1mThis text is bold!\\033[0m" candidate\'s  resume and prepare any questions you may have. If the interview is virtual, the meeting link is attached below.\n\n'
-    'Best regards,\n\n'
-    f'Please provide the interview feedback on this url' 
-    )
-    send_mail(subject_interviewer, message_interviewer, settings.EMAIL_HOST_USER, ['danishk9770@gmail.com'])
-    return Response('Done')

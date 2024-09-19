@@ -4,17 +4,20 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 import os
-
+from datetime import timedelta
 
 
 
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 credentials_json = "D:/SOS/sos_2phasepractice/project/interviewer/credentials.json"
+# credentials_json = "D:/sos_backup/sos_backup/interviewer/credentials_json.json"
+token_json = "D:/SOS/sos_2phasepractice/project/interviewer/token.json"
 
-def create_google_meet_event():
+def create_google_meet_event(interview,phase_name):
+    print(f'\n\n\n{interview}\n\n\n')
     creds = None
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    if os.path.exists(token_json):
+        creds = Credentials.from_authorized_user_file(token_json, SCOPES)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
@@ -22,36 +25,34 @@ def create_google_meet_event():
             flow = InstalledAppFlow.from_client_secrets_file(
                 credentials_json, SCOPES)
             creds = flow.run_local_server(port=50450)
-            print('\n\n\n',creds,'\n\n\n')
-        with open('token.json', 'w') as token:
+        with open(token_json, 'w') as token:
             token.write(creds.to_json())
 
     service = build('calendar', 'v3', credentials=creds)
-    
     event = {
-        'summary': 'Interview with Candidate',
-        'description': 'Interview scheduled with the candidate.',
+        'summary': f'Interview with Candidate Round - {phase_name}',
+        'description': interview["notes"],
         'start': {
-            'dateTime': '2024-09-05T09:00:00+05:30',
+            'dateTime': (interview['scheduled_date']+ timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%S'),
             'timeZone': 'Asia/Kolkata',
         },
         'end': {
-            'dateTime': '2024-09-05T10:00:00+05:30',
+            'dateTime': (interview['scheduled_date']+ timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%S'),
             'timeZone': 'Asia/Kolkata',
         },
         'conferenceData': {
             'createRequest': {
-                'requestId': 'sample123',
+                'requestId': f"{interview['application_id']}",
                 'conferenceSolutionKey': {
                     'type': 'hangoutsMeet'
                 },
-            }
+                'status': {
+                    'statusCode': 'success'
+                }
+            },
         },
-        'attendees': [
-            {'email': 'candidate@example.com'},
-        ],
     }
-
+    print(f'\n\n\n{event}\n\n\n')
     try:
         event = service.events().insert(calendarId='primary', body=event, conferenceDataVersion=1).execute()
         print(f"Meet link: {event['hangoutLink']}")
