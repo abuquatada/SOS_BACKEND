@@ -66,7 +66,7 @@ class JobPosting(models.Model):
     job_position = models.CharField(max_length=100)
     industry_id = models.ForeignKey(Industry, on_delete=models.CASCADE)
     department_id = models.ForeignKey(Department, on_delete=models.CASCADE)
-    job_type = models.CharField(max_length=100) #Full Time, Permanent
+    job_type = models.CharField(max_length=100) 
     description = models.TextField(blank=True)
     requirements = models.TextField(blank=True)
     skills = models.ManyToManyField(Skill, blank=True)
@@ -91,8 +91,3 @@ class JobStatusLog(models.Model):
     job_id = models.ForeignKey(JobPosting, on_delete=models.CASCADE)
     status_id = models.ForeignKey(JobStatus, on_delete=models.CASCADE)
     date_changed = models.DateTimeField(auto_now_add=True)
-
-
-
-
-
