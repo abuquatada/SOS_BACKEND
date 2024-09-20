@@ -21,6 +21,7 @@ from rest_framework.views import APIView
 from django.http import JsonResponse
 from googleapiclient.discovery import build
 from django.utils import timezone
+from app.pagination import CustomPagination
 
 
 
@@ -210,7 +211,7 @@ def InterviewView(request,pk=None):
         
         serializers=InterviewSerializer(data=interview_obj)
         if serializers.is_valid():
-           inter_data = {
+            inter_data = {
                                 "type":interview_obj["type"],
                                 "scheduled_date":scheduled_date, 
                                 "notes":interview_obj["notes"],
@@ -320,6 +321,7 @@ class FilterInterviewer(generics.ListAPIView):
 class FilterInterview(generics.ListAPIView):
     queryset=Interview.objects.all()
     serializer_class=InterviewSerializer
+    pagination_class = CustomPagination
     filter_backends=[DjangoFilterBackend]
     filterset_class=InterviewFilter
 
