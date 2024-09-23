@@ -393,14 +393,15 @@ def skills(request, pk=None):
             except Skill.DoesNotExist:
                 return Response(status=status.HTTP_404_NOT_FOUND)
         else:
-            size_= request.GET.get('size')  
-            if size_:
-                paginator = CustomPagination(size_)
-            else:    
-                paginator = CustomPagination(25)
+            # size_= request.GET.get('size')  
+            # if size_:
+            #     paginator = CustomPagination(size_)
+            # else:    
+            paginator = CustomPagination()
             skills = Skill.objects.all()
             result_page = paginator.paginate_queryset(skills, request)
             serializer = SkillSerializer(result_page, many=True)
+            print('\n\n\n',serializer.data,'\n\n\n')
             return paginator.get_paginated_response(serializer.data)
 
     elif request.method == 'POST':
@@ -594,6 +595,7 @@ def location(request, company_id=None, location_id=None):
 class FilterDepartment(generics.ListAPIView):
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
+    pagination_class = CustomPagination
     filter_backends = [DjangoFilterBackend]
     filterset_class = DepartmentFilter
 
@@ -602,6 +604,7 @@ class FilterDepartment(generics.ListAPIView):
 class FilterCompany(generics.ListAPIView):
     queryset = Company.objects.all()
     serializer_class =CompanySerializer
+    # pagination_class = CustomPagination
     filter_backends = [DjangoFilterBackend]
     filterset_class = CompanyFilter
 

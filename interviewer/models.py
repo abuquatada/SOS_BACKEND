@@ -29,6 +29,13 @@ class Interview(models.Model):
     virtual_link=models.URLField(max_length=100,null=True,blank=True)
     status=models.CharField(max_length=100,null=True)
     notes=models.CharField(max_length=100)
+    qualified=models.CharField(max_length=100,choices=[
+        ('Selected','Selected'),
+        ('Rejected','Rejected'),
+        ('Onhold','Onhold'),
+        ('Pending','Pending'),
+        ('NextRound','NextRound'),
+    ],default='Pending')
     
 class InterviewPhase(models.Model):
     phase_id=models.AutoField(primary_key=True)
