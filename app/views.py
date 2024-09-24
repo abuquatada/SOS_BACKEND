@@ -231,3 +231,51 @@ class ChangePassword(APIView):
             return Response({"detail": "Password has been changed successfully."}, status=status.HTTP_200_OK)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+@api_view(['GET','POST'])
+def DocumentViews(request,pk=None):
+    if request.method=='GET':
+        if pk is not None:
+            try:
+                document_obj=Document.objects.get(pk=pk)
+                serializers=DocumentSerializer(document_obj)
+                return Response(serializers.data)
+            except:
+                return Response(serializers.errors,status=status.HTTP_404_NOT_FOUND)
+        else:
+            document_obj=Document.objects.all()
+            serializers=DocumentSerializer(document_obj,many=True)
+            return Response(serializers.data)
+    elif request.method=='POST':
+        try:
+          document_obj=request.data
+        except:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        serializers=DocumentSerializer(data=document_obj)
+        if serializers.is_valid():
+            serializers.save()
+            return Response("Document Added Successfully",status=status.HTTP_200_OK)
+        return Response(serializers.errors,status=status.HTTP_404_NOT_FOUND)
+    elif request.method =='PATCH':
+        try:  
+          document_obj=Document.objects.get(pk=pk)
+        except:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        serializers=DocumentSerializer(document_obj,data=request.data,partial=True)
+        if serializers.is_valid():
+            serializers.save()
+            return Response("Document Updated Successfully",status=status.HTTP_200_OK)
+        return Response(serializers.errors,status=status.HTTP_404_NOT_FOUND)
+    elif request.method=='DELETE':
+        try:
+          document_obj=Document.objects.get(pk=pk)
+        except:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        document_obj.delete()
+        return Response('Deleted Successfully',status=status.HTTP_200_OK)
+
+
+        
+
+         
