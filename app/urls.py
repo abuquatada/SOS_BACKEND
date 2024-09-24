@@ -121,8 +121,8 @@ urlpatterns = [
     path('google/forms/init/', GoogleFormsInitView.as_view(), name='google_forms_init'),
     path('google/forms/redirect/', GoogleFormsRedirectView.as_view(), name='google_forms_redirect'),
     path('google/forms/access/<uuid:token>/', AccessFormView.as_view(), name='access_form'),
-    path('abcd/',DocumentViews),
-    path('abcd/<int:pk>',DocumentViews)
+    path('document/',DocumentViews),
+    path('document/<int:pk>',DocumentViews)
     
 
 ]
