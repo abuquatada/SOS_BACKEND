@@ -58,3 +58,9 @@ class CustomTokenRefreshSerializer(TokenRefreshSerializer):
 
         data['access'] = str(access_token)
         return data
+    
+
+class DocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Document
+        fields='__all__'
