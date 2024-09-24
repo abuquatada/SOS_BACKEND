@@ -9,7 +9,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .filters import *
 import csv
 from datetime import datetime
-from django.core.mail import send_mail
+from django.core.mail import send_mail,EmailMessage
 from django.conf import  settings
 from .meet import *
 import logging
@@ -169,7 +169,7 @@ def InterviewView(request,pk=None):
         application_obj = Application.objects.get(application_id=interview_obj['application_id'])
         interviewer_obj = Interviewer.objects.get(interviewer_id=interview_obj['interviewer'])
         phase_obj = InterviewPhase.objects.get(phase_id=interview_obj['phase'])
-        status_obj=ApplicationStatus.objects.get(status_id=interview_obj['application_status'])
+        # status_obj=ApplicationStatus.objects.get(status_id=interview_obj['application_status'])
 
         
         scheduled_date = datetime.strptime(interview_obj['scheduled_date'], "%Y-%m-%d %I:%M %p")
@@ -204,36 +204,38 @@ def InterviewView(request,pk=None):
                 
             obj_interview.save()
             
-            application_satu=ApplicationStatusLog.objects.create(application_id=application_obj,
-                                                                  status_id=status_obj
-                                                                  )
-            application_satu.save()
+            # application_satu=ApplicationStatusLog.objects.create(application_id=application_obj,
+            #                                                       status_id=status_obj
+            #                                                       )
+            # application_satu.save()
             
             print(f'this is interview{obj_interview.interview_id}','\n\n\n')
-            interview_data = {
-                "applicant_name":obj_interview.application_id.applicant_id.id.first_name
-            }
+            # interview_data = {
+            #     "applicant_name":obj_interview.application_id.applicant_id.id.first_name
+            # }
             question_data=[]
-            feedback_form = google_form(interview_data)
-            print('\n\n\n',f'feedback data {feedback_form}','\n\n\n')
-            for i in feedback_form[1]['replies']:
-                d = i['createItem']['questionId']
-                question_data.extend(d)
+            # feedback_form = google_form(interview_data)
+            # print('\n\n\n',f'feedback data {feedback_form}','\n\n\n')
+            # for i in feedback_form[1]['replies']:
+            #     d = i['createItem']['questionId']
+            #     question_data.extend(d)
                 
             print(question_data)
-            feedback_obj = Google_form.objects.create(
-                                            google_form_id=feedback_form[0]['formId'],
-                                            interview=obj_interview,
-                                            feedback_url=feedback_form[0]['responderUri'],
-                                            status_question_id=question_data[0],
-                                            rating_question_id=question_data[1],
-                                            comments_question_id=question_data[2],
-                                            )
-            feedback_obj.save() 
+            # feedback_obj = Google_form.objects.create(
+            #                                 google_form_id=feedback_form[0]['formId'],
+            #                                 interview=obj_interview,
+            #                                 feedback_url=feedback_form[0]['responderUri'],
+            #                                 status_question_id=question_data[0],
+            #                                 rating_question_id=question_data[1],
+            #                                 comments_question_id=question_data[2],
+            #                                 )
+            # feedback_obj.save() 
             
             applicant_user = Application.objects.get(application_id=interview_obj['application_id'])
             applicant_email = applicant_user.applicant_id.id.email
             applicant_name = applicant_user.applicant_id.id.first_name
+            applicant_resume=applicant_user.applicant_id.resume
+            print('\n\n\n',applicant_resume,'\n\n\n')
             
             interviewer_id= interview_obj['interviewer']
             interviewer_instance = Interviewer.objects.get(interviewer_id=interviewer_id)
@@ -244,7 +246,7 @@ def InterviewView(request,pk=None):
             companies_instance=Application.objects.get(application_id=application_id)
             company_name=companies_instance.company_id.company_name
 
-
+            
             subject_applicant = f'Interview Invitation at {company_name}'
             message_applicant = (
             f'Dear {applicant_name},\n\n'
@@ -259,9 +261,16 @@ def InterviewView(request,pk=None):
             f'Please review the candidate\'s  resume and prepare any questions you may have. If the interview is virtual, the meeting link is attached below.\n\n'
             'Best regards,\n\n'
             f'Please provide the interview feedback on this url{subject_applicant}'
+            f'{applicant_resume}'
 
             )
-            send_mail(subject_interviewer, message_interviewer, settings.EMAIL_HOST_USER, [interviewer_email])
+            print('\n\n\n',applicant_resume,'\n\n\n')
+            email=EmailMessage(subject_interviewer, message_interviewer, settings.EMAIL_HOST_USER,[interviewer_email])
+            email.attach_file(applicant_resume.path)
+            email.send()
+            
+            
+            
             return Response('Interview Added',status=status.HTTP_200_OK)
         return Response(serializers.errors,status=status.HTTP_404_NOT_FOUND)
     
