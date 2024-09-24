@@ -14,3 +14,10 @@ class Roles(models.Model):
 class CustomUser(AbstractUser):
     role_id = models.ForeignKey(Roles, on_delete=models.CASCADE,null=True)
     email = models.EmailField(unique=True)
+
+
+class Document(models.Model):
+    document_id=models.AutoField(primary_key=True)
+    document_name=models.CharField(max_length=250)
+    document=models.FileField(upload_to='media/Document')
+    document_discription=models.CharField(max_length=1000)
