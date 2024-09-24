@@ -3,3 +3,4 @@ from .models import *
 
 admin.site.register(CustomUser)
 admin.site.register(Roles)
+admin.site.register(Document)
